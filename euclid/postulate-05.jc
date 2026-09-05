@@ -16,7 +16,7 @@ E=intersection(a,b,0) <<name:'E'>>;
 angle(R,B,D) <<name:'α',selection:'minor'>>;
 angle(B,D,S) <<name:'β',selection:'minor'>>;
 text(-9,-4.5,map () -> 'α + β = '+round(10*(min(deg(R,B,D),360-deg(R,B,D))+min(deg(B,D,S),360-deg(B,D,S))))/10+'°') <<display:'internal',fontSize:16>>;
-text(-9,-5.5,'Here α + β < 180°: the lines meet on the right.') <<display:'internal',fontSize:16>>;
+text(-9,-5.5,'Here α + β < 180°: the lines meet on the right.') <<display:'html',fontSize:16>>;
 // Keep the marked rays on the right of transversal BD when exploring this case.
 // At a 180-degree sum the lines are parallel and E has no finite position.
 text(-9,6,'Postulate 5: The parallel postulate') <<display:'internal',fontSize:18>>;
