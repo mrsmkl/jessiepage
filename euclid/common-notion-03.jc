@@ -16,5 +16,5 @@ H=point(map () -> -6+dist(A,B),-3);
 K=point(map () -> -6+dist(A,B)+dist(B,C),-3);
 segment(D,E) <<strokeColor:'#aaa',dash:2>>; segment(E,F) <<strokeWidth:4,strokeColor:'#b45b27'>>;
 segment(G,H) <<strokeColor:'#aaa',dash:2>>; segment(H,K) <<strokeWidth:4,strokeColor:'#b45b27'>>;
-text(-9,-5.5,'Remove equal dashed parts: the orange remainders are equal.') <<display:'internal',fontSize:16>>;
+text(-9,-5.5,map () -> 'Remove '+round(100*dist(A,B))/100+' from '+round(100*(dist(A,B)+dist(B,C)))/100+': each remainder = '+round(100*dist(B,C))/100) <<display:'internal',fontSize:16>>;
 text(-9,6,'Common notion 3: Subtract equals from equals') <<display:'internal',fontSize:18>>;

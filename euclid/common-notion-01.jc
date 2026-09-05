@@ -14,6 +14,6 @@ segment(A,B) <<strokeWidth:3>>;
 segment(C,D) <<strokeWidth:3,strokeColor:'#b45b27'>>;
 segment(E,F) <<strokeWidth:3,strokeColor:'#29917a'>>;
 text(3,3,'c'); text(3,0,'a = c'); text(3,-3,'b = c');
-text(-9,-5.5,'Both equal c; therefore a = b.') <<display:'internal',fontSize:16>>;
+text(-9,-5.5,map () -> 'c = '+round(100*dist(A,B))/100+'; a = '+round(100*dist(C,D))/100+'; b = '+round(100*dist(E,F))/100) <<display:'internal',fontSize:16>>;
 // AB represents c, CD represents a, EF represents b.
 text(-9,6,'Common notion 1: Equality to the same thing') <<display:'internal',fontSize:18>>;

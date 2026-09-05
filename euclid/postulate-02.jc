@@ -10,5 +10,5 @@ line(A,B) <<strokeColor:'#99a4af',dash:2>>;
 segment(A,B) <<strokeWidth:3>>;
 C=point(map () -> 2*X(B)-X(A), map () -> 2*Y(B)-Y(A));
 segment(B,C) <<strokeWidth:3,strokeColor:'#b45b27'>>;
-text(-9,-5,'AB continues straight through B to C and beyond.') <<display:'internal',fontSize:16>>;
+text(-9,-5,map () -> 'AB = '+round(100*dist(A,B))/100+'; BC = '+round(100*dist(B,C))/100+'. The direction is unchanged.') <<display:'internal',fontSize:16>>;
 text(-9,6,'Postulate 2: Extend a straight segment') <<display:'internal',fontSize:18>>;
