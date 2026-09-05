@@ -1,0 +1,43 @@
+// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
+// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
+// Blue points are inputs. Derived points follow their parents.
+// Coordinates implement the Euclidean plane; numerical checks are not proofs.
+// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
+$board.setBoundingBox([-9, 9, 13, -9], true);
+near = function(a,b) { return abs(a-b) < 0.000001*(1+abs(a)+abs(b));
+};
+triangleArea = function(a,b,c) { return abs((X(b)-X(a))*(Y(c)-Y(a))-(Y(b)-Y(a))*(X(c)-X(a)))/2;
+};
+pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
+};
+dp = function(f,g,n) { return point(f,g) <<name:n, size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
+};
+tri = function(a,b,c) { return polygon(a,b,c) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;
+};
+aux = function(a,b) { return line(a,b) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;
+};
+par = function(a,b,c,n) { return dp(function(){return X(b)+X(c)-X(a);},function(){return Y(b)+Y(c)-Y(a);},n);
+};
+along = function(a,b,t,n) { return dp(function(){return X(a)+t()*(X(b)-X(a));},function(){return Y(a)+t()*(Y(b)-Y(a));},n);
+};
+readout = function(y,label,f) { return text(-8,y,function(){return label+': '+round(f()*10000)/10000;}) <<display:'internal',fontSize:15>>;
+};
+// I.40: Equal triangles on equal bases imply parallels
+// I.35 subtracts congruent end triangles; I.36 connects equal bases and uses I.35. I.37/38 take halves of equal parallelograms. I.39/40 use contradiction: a different apex height would make one triangle a proper part of an equal-area triangle. In the converse diagrams, the glider realizes the equal-area hypothesis on its full same-side locus.
+pA=pt(-5,0,'A');
+pB=pt(-1,0,'B');
+pD=pt(-4,3,'D');
+pC=par(pA,pB,pD,'C');
+l=aux(pA,pB);
+m=aux(pD,pC);
+slide=slider([-6,-3],[-2,-3],[-1,1.75,3]) <<name:'Shear',snapWidth:0.01>>;
+pE=along(pD,pC,function(){return slide.Value();},'E');
+pU=along(pA,pB,function(){return 1.6;},'U');
+pV=par(pA,pB,pU,'V');
+tri(pA,pB,pD);
+tri(pU,pV,pE);
+check = function(){return near(triangleArea(pA,pB,pD),triangleArea(pU,pV,pE));};
+readout(-5,'Area ABD',function(){return triangleArea(pA,pB,pD);});
+readout(-6,'Area UVE',function(){return triangleArea(pU,pV,pE);});
+text(-8,8,'I.40') <<display:'internal',fontSize:20>>;
+text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;

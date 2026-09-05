@@ -1,0 +1,33 @@
+// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
+// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
+// Blue points are inputs. Derived points follow their parents.
+// Coordinates implement the Euclidean plane; numerical checks are not proofs.
+// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
+$board.setBoundingBox([-9, 9, 13, -9], true);
+near = function(a,b) { return abs(a-b) < 0.000001*(1+abs(a)+abs(b));
+};
+len = function(a,b) { return sqrt((X(a)-X(b))^2+(Y(a)-Y(b))^2);
+};
+pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
+};
+seg = function(a,b) { return segment(a,b) <<strokeWidth:2, strokeColor:'#34465d'>>;
+};
+aux = function(a,b) { return line(a,b) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;
+};
+cc = function(a,b) { return circle(a,b) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;
+};
+// I.10: Bisect a segment
+// Two equal-radius circles give C,D equidistant from A,B. Their joining line bisects AB by SSS and SAS. This is the standard two-circle variant of I.10.
+pA=pt(-3,0,'A');
+pB=pt(3,0,'B');
+c1=cc(pA,pB);
+c2=cc(pB,pA);
+pC=intersection(c1,c2,0) <<name:'C'>>;
+pD=intersection(c1,c2,1) <<name:'D'>>;
+l=aux(pC,pD);
+pM=intersection(line(pA,pB),l,0) <<name:'M'>>;
+seg(pA,pB);
+check = function(){return near(len(pA,pM),len(pM,pB));};
+
+text(-8,8,'I.10') <<display:'internal',fontSize:20>>;
+text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;

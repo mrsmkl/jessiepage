@@ -1,0 +1,44 @@
+// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
+// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
+// Blue points are inputs. Derived points follow their parents.
+// Coordinates implement the Euclidean plane; numerical checks are not proofs.
+// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
+$board.setBoundingBox([-9, 9, 13, -9], true);
+near = function(a,b) { return abs(a-b) < 0.000001*(1+abs(a)+abs(b));
+};
+len = function(a,b) { return sqrt((X(a)-X(b))^2+(Y(a)-Y(b))^2);
+};
+ang = function(a,b,c) { return acos(max(-1,min(1,((X(a)-X(b))*(X(c)-X(b))+(Y(a)-Y(b))*(Y(c)-Y(b)))/(len(a,b)*len(c,b)))));
+};
+pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
+};
+dp = function(f,g,n) { return point(f,g) <<name:n, size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
+};
+seg = function(a,b) { return segment(a,b) <<strokeWidth:2, strokeColor:'#34465d'>>;
+};
+tri = function(a,b,c) { return polygon(a,b,c) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;
+};
+normal = function(a,b,t,n) { return dp(function(){return X(a)-t()*(Y(b)-Y(a));},function(){return Y(a)+t()*(X(b)-X(a));},n);
+};
+readout = function(y,label,f) { return text(-8,y,function(){return label+': '+round(f()*10000)/10000;}) <<display:'internal',fontSize:15>>;
+};
+mark = function(a,b,c,n) { return angle(a,b,c) <<name:n, radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
+};
+// I.48: Converse of the Pythagorean theorem
+// The input side lengths satisfy the square identity. Construct right triangle BAD with AD=AC. I.47 gives BD=BC; SSS, I.8, equates angle BAC to the constructed right angle. The two-circle construction realizes the original length hypothesis.
+pA=pt(-2,0,'A');
+pB=pt(2,0,'B');
+pH=pt(-6,-4,'H');
+pK=pt(-3,-4,'K');
+seg(pH,pK);
+c1=circle(pA,function(){return len(pH,pK);}) <<dash:2>>;
+c2=circle(pB,function(){return sqrt(len(pA,pB)^2+len(pH,pK)^2);}) <<dash:2>>;
+pC=intersection(c1,c2,0) <<name:'C'>>;
+tri(pA,pB,pC);
+pD=normal(pA,pB,function(){return -len(pH,pK)/len(pA,pB);},'D');
+tri(pA,pB,pD);
+mark(pB,pA,pC,'');
+check = function(){return near(len(pB,pC)^2,len(pA,pB)^2+len(pA,pC)^2) && near(ang(pB,pA,pC),PI/2);};
+readout(-6,'Angle BAC (degrees)',function(){return ang(pB,pA,pC)*180/PI;});
+text(-8,8,'I.48') <<display:'internal',fontSize:20>>;
+text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;

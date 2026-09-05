@@ -1,0 +1,41 @@
+// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
+// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
+// Blue points are inputs. Derived points follow their parents.
+// Coordinates implement the Euclidean plane; numerical checks are not proofs.
+// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
+$board.setBoundingBox([-9, 9, 13, -9], true);
+near = function(a,b) { return abs(a-b) < 0.000001*(1+abs(a)+abs(b));
+};
+len = function(a,b) { return sqrt((X(a)-X(b))^2+(Y(a)-Y(b))^2);
+};
+ang = function(a,b,c) { return acos(max(-1,min(1,((X(a)-X(b))*(X(c)-X(b))+(Y(a)-Y(b))*(Y(c)-Y(b)))/(len(a,b)*len(c,b)))));
+};
+pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
+};
+dp = function(f,g,n) { return point(f,g) <<name:n, size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
+};
+aux = function(a,b) { return line(a,b) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;
+};
+par = function(a,b,c,n) { return dp(function(){return X(b)+X(c)-X(a);},function(){return Y(b)+Y(c)-Y(a);},n);
+};
+along = function(a,b,t,n) { return dp(function(){return X(a)+t()*(X(b)-X(a));},function(){return Y(a)+t()*(Y(b)-Y(a));},n);
+};
+mark = function(a,b,c,n) { return angle(a,b,c) <<name:n, radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
+};
+// I.28: Corresponding or supplementary angles imply parallels
+// I.27 uses I.16 to rule out an intersection. I.28 reduces to I.27 using vertical or supplementary angles. I.29 uses the parallel postulate and I.13/I.15. The parallel input configuration keeps the relevant hypotheses true.
+pA=pt(-4,0,'A');
+pB=pt(4,0,'B');
+pC=pt(-3,3,'C');
+pD=par(pA,pB,pC,'D');
+l=aux(pA,pB);
+m=aux(pC,pD);
+pE=along(pA,pB,function(){return 0.5;},'E');
+pF=along(pC,pD,function(){return 0.65;},'F');
+aux(pE,pF);
+mark(pB,pE,pF,'β');
+mark(pE,pF,pD,'α');
+check = function(){return near(ang(pA,pE,pF),ang(pE,pF,pD)) && near(ang(pB,pE,pF)+ang(pE,pF,pD),PI);};
+
+text(-8,8,'I.28') <<display:'internal',fontSize:20>>;
+text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;
