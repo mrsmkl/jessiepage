@@ -44,6 +44,8 @@
 
     .icon-button { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 7px; background: transparent; color: var(--muted); font: 18px/1 system-ui, sans-serif; cursor: pointer; }
     .icon-button:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+    .docs-link { flex: 0 0 auto; color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .docs-link:hover { color: var(--accent); text-decoration: underline; }
 
     #status { margin-left: auto; max-width: 35%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     #status.ok { color: var(--muted); }
@@ -75,9 +77,11 @@
       main { grid-template-columns: 1fr; grid-template-rows: minmax(180px, var(--editor-height)) 7px minmax(0, 1fr); }
       .editor-pane { grid-template-rows: auto minmax(0, 1fr) auto; }
       .brand { display: none; }
-      #page-select { width: 78px; }
-      #page-name { width: 108px; }
-      #status { max-width: 28%; }
+      #page-select { width: 70px; min-width: 64px; }
+      #page-name { flex: 1 1 auto; width: auto; min-width: 68px; }
+      #status.ok, #status.pending { display: none; }
+      #status.error { margin-left: 0; max-width: 52px; }
+      .docs-link { font-size: 10px; }
       .hint:not(.error), .point-readback { display: none; }
       .splitter { cursor: row-resize; }
       .splitter::after { inset: -4px 0; }
@@ -94,6 +98,7 @@
         <select id="page-select" aria-label="Switch page"></select>
         <input id="page-name" type="text" maxlength="60" aria-label="Page name" title="Edit page name" />
         <button id="add-page" class="icon-button" title="New page" aria-label="New page">+</button>
+        <a class="docs-link" href="https://jsxgraph.org/docs/symbols/JXG.JessieCode.html" target="_blank" rel="noopener noreferrer" title="Official JessieCode reference">Jessie ↗</a>
         <div id="status">loading…</div>
       </div>
 
