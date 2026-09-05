@@ -1,0 +1,22 @@
+// Euclid Book I — Common notion 2: Add equals to equals
+// Adding equal magnitudes to equal magnitudes gives equal totals.
+// Illustrative model of an assumption, not a proof.
+// Used in: I.2, I.13, I.32.
+$board.setBoundingBox([-10, 7, 10, -7], true);
+
+A = point(-6, 3);
+B = point(-2, 3);
+C = point(1, 3);
+segment(A,B) <<strokeWidth:4>>;
+segment(B,C) <<strokeWidth:4,strokeColor:'#b45b27'>>;
+D=point(-6,-1) <<fixed:true>>;
+E=point(map () -> -6+dist(A,B),-1);
+F=point(map () -> -6+dist(A,B)+dist(B,C),-1);
+G=point(-6,-3) <<fixed:true>>;
+H=point(map () -> -6+dist(A,B),-3);
+K=point(map () -> -6+dist(A,B)+dist(B,C),-3);
+segment(D,E) <<strokeWidth:4>>; segment(E,F) <<strokeWidth:4,strokeColor:'#b45b27'>>;
+segment(G,H) <<strokeWidth:4>>; segment(H,K) <<strokeWidth:4,strokeColor:'#b45b27'>>;
+text(3,-1,'a + b'); text(3,-3,'a + b');
+text(-9,-5.5,'Equal blue parts + equal orange parts = equal totals.') <<display:'internal',fontSize:16>>;
+text(-9,6,'Common notion 2: Add equals to equals') <<display:'internal',fontSize:18>>;

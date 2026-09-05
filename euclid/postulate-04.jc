@@ -1,0 +1,18 @@
+// Euclid Book I — Postulate 4: All right angles are equal
+// All right angles are equal to one another, regardless of orientation or size.
+// Illustrative model of an assumption, not a proof.
+// Used in: I.13–15, I.29, I.46–48.
+$board.setBoundingBox([-10, 7, 10, -7], true);
+
+A = point(-6, 0);
+B = point(-3, 0);
+C=point(map () -> X(A)-(Y(B)-Y(A)),map () -> Y(A)+X(B)-X(A));
+D = point(2, -1);
+E = point(4, 1);
+F=point(map () -> X(D)-1.2*(Y(E)-Y(D)),map () -> Y(D)+1.2*(X(E)-X(D)));
+segment(A,B); segment(A,C);
+segment(D,E); segment(D,F);
+angle(B,A,C) <<name:'90°',selection:'minor'>>;
+angle(E,D,F) <<name:'90°',selection:'minor'>>;
+text(-9,-5,'Both right angles are equal, even after rotation.') <<display:'internal',fontSize:16>>;
+text(-9,6,'Postulate 4: All right angles are equal') <<display:'internal',fontSize:18>>;

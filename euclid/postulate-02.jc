@@ -1,0 +1,14 @@
+// Euclid Book I — Postulate 2: Extend a straight segment
+// A finite straight line can be extended continuously along the same straight line.
+// Illustrative model of an assumption, not a proof.
+// Used in: I.2, I.5, I.16, I.20.
+$board.setBoundingBox([-10, 7, 10, -7], true);
+
+A = point(-3, 0);
+B = point(2, 1);
+line(A,B) <<strokeColor:'#99a4af',dash:2>>;
+segment(A,B) <<strokeWidth:3>>;
+C=point(map () -> 2*X(B)-X(A), map () -> 2*Y(B)-Y(A));
+segment(B,C) <<strokeWidth:3,strokeColor:'#b45b27'>>;
+text(-9,-5,'AB continues straight through B to C and beyond.') <<display:'internal',fontSize:16>>;
+text(-9,6,'Postulate 2: Extend a straight segment') <<display:'internal',fontSize:18>>;

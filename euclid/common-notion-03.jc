@@ -1,0 +1,20 @@
+// Euclid Book I — Common notion 3: Subtract equals from equals
+// Subtracting equal magnitudes from equal magnitudes leaves equal remainders.
+// Illustrative model of an assumption, not a proof.
+// Used in: I.2, I.5, I.15, I.35, I.43.
+$board.setBoundingBox([-10, 7, 10, -7], true);
+
+A = point(-6, 3);
+B = point(-2, 3);
+C = point(1, 3);
+segment(A,B) <<strokeWidth:4>>; segment(B,C) <<strokeWidth:4,strokeColor:'#b45b27'>>;
+D=point(-6,-1) <<fixed:true>>;
+E=point(map () -> -6+dist(A,B),-1);
+F=point(map () -> -6+dist(A,B)+dist(B,C),-1);
+G=point(-6,-3) <<fixed:true>>;
+H=point(map () -> -6+dist(A,B),-3);
+K=point(map () -> -6+dist(A,B)+dist(B,C),-3);
+segment(D,E) <<strokeColor:'#aaa',dash:2>>; segment(E,F) <<strokeWidth:4,strokeColor:'#b45b27'>>;
+segment(G,H) <<strokeColor:'#aaa',dash:2>>; segment(H,K) <<strokeWidth:4,strokeColor:'#b45b27'>>;
+text(-9,-5.5,'Remove equal dashed parts: the orange remainders are equal.') <<display:'internal',fontSize:16>>;
+text(-9,6,'Common notion 3: Subtract equals from equals') <<display:'internal',fontSize:18>>;
