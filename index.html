@@ -23,10 +23,10 @@
 
     * { box-sizing: border-box; }
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--panel-2); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    main { width: 100vw; height: 100dvh; display: grid; grid-template-columns: minmax(260px, var(--editor-width)) 7px minmax(0, 1fr); background: var(--panel-2); }
+    main { width: 100vw; height: 100dvh; display: grid; grid-template-columns: minmax(0, var(--editor-width)) 7px minmax(0, 1fr); background: var(--panel-2); }
 
-    .editor-pane { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; background: var(--panel); }
-    .topline { height: 43px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border-bottom: 1px solid var(--border); user-select: none; }
+    .editor-pane { min-width: 0; min-height: 0; overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; background: var(--panel); }
+    .topline { height: 43px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border-bottom: 1px solid var(--border); user-select: none; overflow: hidden; }
     .brand { flex: 0 0 auto; font-size: 13px; font-weight: 680; letter-spacing: .01em; margin-right: 2px; }
 
     #page-select, #page-name {
@@ -66,18 +66,24 @@
     #points { margin: 0; color: var(--muted); font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; }
 
     .splitter { position: relative; z-index: 5; cursor: col-resize; background: var(--border); touch-action: none; }
-    .splitter::after { content: ""; position: absolute; inset: 0 -4px; }
+    .splitter::after { content: ""; position: absolute; inset: 0 -5px; }
     .splitter:hover, .splitter.dragging { background: var(--accent); }
 
     .board-pane { min-width: 0; min-height: 0; padding: 12px; background: var(--panel-2); }
     #board { width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / .06), rgb(0 0 0 / .3)); cursor: grab; touch-action: none; overscroll-behavior: contain; }
     #board:active { cursor: grabbing; }
 
-    /* JSXGraph navigation: panning is already done by dragging the canvas, so
-       remove the four arrow buttons and make the useful controls easier to hit. */
+    /* JSXGraph uses stable IDs for navigation buttons. Remove all pan arrows;
+       panning is done by dragging the board itself. */
+    #board_navigation_button_left,
+    #board_navigation_button_right,
+    #board_navigation_button_up,
+    #board_navigation_button_top,
+    #board_navigation_button_down,
     #board .JXG_navigation_button_left,
     #board .JXG_navigation_button_right,
     #board .JXG_navigation_button_up,
+    #board .JXG_navigation_button_top,
     #board .JXG_navigation_button_down {
       display: none !important;
     }
@@ -108,7 +114,7 @@
     #validator { position: fixed; left: -10000px; top: -10000px; width: 400px; height: 400px; opacity: 0; pointer-events: none; }
 
     @media (max-width: 760px) {
-      main { grid-template-columns: 1fr; grid-template-rows: minmax(180px, var(--editor-height)) 7px minmax(0, 1fr); }
+      main { grid-template-columns: 1fr; grid-template-rows: minmax(0, var(--editor-height)) 7px minmax(0, 1fr); }
       .editor-pane { grid-template-rows: auto minmax(0, 1fr) auto; }
       .brand { display: none; }
       #page-select { width: 68px; min-width: 62px; }
@@ -119,7 +125,7 @@
       .docs-link { font-size: 10px; }
       .hint:not(.error), .point-readback { display: none; }
       .splitter { cursor: row-resize; }
-      .splitter::after { inset: -4px 0; }
+      .splitter::after { inset: -5px 0; }
       .board-pane { padding: 8px; }
       #board { border-radius: 8px; }
       #board .JXG_navigation { gap: 7px; right: 10px !important; bottom: 10px !important; }
@@ -349,13 +355,21 @@
       }
     }
 
+    function removePanButtons() {
+      for (const type of ['left', 'right', 'up', 'top', 'down']) {
+        document.getElementById(`board_navigation_button_${type}`)?.remove();
+      }
+    }
+
     function makeBoard(code, bbox) {
       if (board) JXG.JSXGraph.freeBoard(board);
       board = JXG.JSXGraph.initBoard('board', { ...boardOptions, boundingbox: Array.isArray(bbox) ? bbox : DEFAULT_BBOX });
+      removePanButtons();
       board.jc.parse(code);
       board.on('update', updatePointReadback);
       board.on('boundingbox', rememberView);
       board.update();
+      removePanButtons();
       bindSimplePointSourceSync(code);
       updatePointReadback();
     }
@@ -410,11 +424,15 @@
     function setSplitFromPointer(event) {
       const rect = layout.getBoundingClientRect();
       if (window.matchMedia('(max-width: 760px)').matches) {
-        const height = Math.max(180, Math.min(rect.height - 180, event.clientY - rect.top));
+        const minEditor = 43;
+        const minCanvas = 48;
+        const height = Math.max(minEditor, Math.min(rect.height - minCanvas, event.clientY - rect.top));
         document.documentElement.style.setProperty('--editor-height', `${height}px`);
         localStorage.setItem('jessiepage-editor-height', String(height));
       } else {
-        const width = Math.max(260, Math.min(rect.width - 300, event.clientX - rect.left));
+        const minEditor = 80;
+        const minCanvas = 80;
+        const width = Math.max(minEditor, Math.min(rect.width - minCanvas, event.clientX - rect.left));
         document.documentElement.style.setProperty('--editor-width', `${width}px`);
         localStorage.setItem('jessiepage-editor-width', String(width));
       }
