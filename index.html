@@ -125,17 +125,35 @@
 
     const computeEngine = new ComputeEngine();
 
+    function toJessieExpression(json) {
+      if (typeof json === 'number') return String(json);
+      if (typeof json === 'string') return json;
+      if (!Array.isArray(json) || !json.length) throw new Error('Unsupported CAS result');
+      const [operator, ...operands] = json;
+      const values = operands.map(toJessieExpression);
+      switch (operator) {
+        case 'Add': return `(${values.join('+')})`;
+        case 'Multiply': return `(${values.join('*')})`;
+        case 'Power': return `(${values[0]}^${values[1]})`;
+        case 'Divide':
+        case 'Rational': return `(${values[0]}/${values[1]})`;
+        case 'Negate': return `(-${values[0]})`;
+        case 'Sqrt': return `sqrt(${values[0]})`;
+        default: return `${String(operator).toLowerCase()}(${values.join(',')})`;
+      }
+    }
+
     // CortexJS helpers exposed as ordinary JessieCode functions.
     JXG.JessieCode.prototype.addBuiltIn('simplify', (source) =>
-      computeEngine.parse(String(source)).simplify().latex
+      toJessieExpression(computeEngine.parse(String(source)).simplify().json)
     );
     JXG.JessieCode.prototype.addBuiltIn('expand', (source) => {
       const expression = computeEngine.parse(String(source));
-      return computeEngine.box(['Expand', expression]).evaluate().latex;
+      return toJessieExpression(computeEngine.box(['Expand', expression]).evaluate().json);
     });
     JXG.JessieCode.prototype.addBuiltIn('differentiate', (source, variable) => {
       const expression = computeEngine.parse(String(source));
-      return computeEngine.box(['D', expression, variable || 'x']).evaluate().latex;
+      return toJessieExpression(computeEngine.box(['D', expression, variable || 'x']).evaluate().json);
     });
     JXG.JessieCode.prototype.addBuiltIn('solve', (source, variable) =>
       computeEngine.parse(String(source)).solve(variable || 'x').map((solution) => {
@@ -237,38 +255,38 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
       { key: 'loop', name: 'Example · Programming', bbox: [-6,6,6,-6], source: `for (i = 0; i < 9; i = i + 1) {
   point(i - 4, 2 * sin(i)) << name: '', withLabel: false >>;
 }` },
-      { key: 'cas-simplify', name: 'CAS · Simplify', bbox: [-6,6,6,-6], source: `// Simplify symbolically and compare both function graphs.
-expression = '(x+1)^2-(x^2+2x)';
+      { key: 'cas-simplify', name: 'CAS · Simplify', bbox: [-6,6,6,-6], source: `// Define the function once; the CAS result is directly graphable.
+expression = '(x+1)^2-(x^2+2*x)';
 result = simplify(expression);
 
-f = functiongraph('(x+1)^2-(x^2+2*x)') << strokeColor: '#d97706', strokeWidth: 4 >>;
-g = functiongraph('1') << strokeColor: '#2563eb', strokeWidth: 2, dash: 2 >>;
+f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 4 >>;
+g = functiongraph(result) << strokeColor: '#2563eb', strokeWidth: 2, dash: 2 >>;
 text(-5, 5, 'simplify(' + expression + ') = ' + result) << fontSize: 17 >>;
-text(-5, 4.3, 'orange: input · blue dashed: simplified') << fontSize: 14 >>;` },
-      { key: 'cas-expand', name: 'CAS · Expand', bbox: [-6,6,6,-6], source: `// Expand symbolically and compare both function graphs.
+text(-5, 4.3, 'orange: input · blue dashed: simplified') << fontSize: 14 >>;`, previousSourceHash: '1d7f987a1cd670bac95e763b619eda6f425fba8498c4de448ff09f978d3ad272' },
+      { key: 'cas-expand', name: 'CAS · Expand', bbox: [-6,6,6,-6], source: `// Define the function once; the CAS result is directly graphable.
 expression = '(x+1)^3';
 result = expand(expression);
 
-f = functiongraph('(x+1)^3') << strokeColor: '#d97706', strokeWidth: 4 >>;
-g = functiongraph('x^3+3*x^2+3*x+1') << strokeColor: '#2563eb', strokeWidth: 2, dash: 2 >>;
+f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 4 >>;
+g = functiongraph(result) << strokeColor: '#2563eb', strokeWidth: 2, dash: 2 >>;
 text(-5, 5, 'expand(' + expression + ') = ' + result) << fontSize: 17 >>;
 text(-5, 4.3, 'orange: input · blue dashed: expanded') << fontSize: 14 >>;` },
-      { key: 'cas-differentiate', name: 'CAS · Differentiate', bbox: [-6,6,6,-6], source: `// Symbolic differentiation with an explicit variable.
-expression = 'x^3+2x^2-x+4';
+      { key: 'cas-differentiate', name: 'CAS · Differentiate', bbox: [-6,6,6,-6], source: `// Define the function once, derive it, and graph both variables.
+expression = 'x^3+2*x^2-x+4';
 derivative = differentiate(expression, 'x');
 
-f = functiongraph('x^3+2*x^2-x+4') << strokeColor: '#d97706', strokeWidth: 3 >>;
-df = functiongraph('3*x^2+4*x-1') << strokeColor: '#2563eb', strokeWidth: 3 >>;
+f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 3 >>;
+df = functiongraph(derivative) << strokeColor: '#2563eb', strokeWidth: 3 >>;
 text(-5, 5, "differentiate(" + expression + ", 'x') = " + derivative) << fontSize: 17 >>;
-text(-5, 4.3, "orange: f · blue: f'") << fontSize: 14 >>;` },
-      { key: 'cas-solve', name: 'CAS · Solve to points', bbox: [-6,6,6,-6], source: `// Solve an equation, then use its real roots as ordinary point coordinates.
-equation = 'x^2-5x+6=0';
-roots = solve(equation, 'x');
+text(-5, 4.3, "orange: f · blue: f'") << fontSize: 14 >>;`, previousSourceHash: '2238c1409676ca0c4996c03eb5bbe0b45ba515a682a3ee0a56da169e4a276743' },
+      { key: 'cas-solve', name: 'CAS · Solve to points', bbox: [-6,6,6,-6], source: `// Define the function once, solve it, graph it, and draw all roots at once.
+expression = 'x^2-5*x+6';
+roots = solve(expression + '=0', 'x');
 
 rootPoints = points([[roots[0], 0], [roots[1], 0]], 'R');
-f = functiongraph('x^2-5*x+6') << strokeColor: '#d97706', strokeWidth: 3 >>;
-text(-5, 5, "solve(" + equation + ", 'x') = [" + roots + ']') << fontSize: 17 >>;
-text(-5, 4.3, "points([[roots[0], 0], [roots[1], 0]], 'R')") << fontSize: 14 >>;` }
+f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 3 >>;
+text(-5, 5, "solve(" + expression + "=0, 'x') = [" + roots + ']') << fontSize: 17 >>;
+text(-5, 4.3, "points([[roots[0], 0], [roots[1], 0]], 'R')") << fontSize: 14 >>;`, previousSourceHash: '550770f454f89141d5c196ad112534ace0cfa0f7eb55a32c74c1848324a02c4e' }
     ];
 
     // Standalone JessieCode diagrams, installed once as editable local pages.
