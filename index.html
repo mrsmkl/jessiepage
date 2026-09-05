@@ -433,9 +433,18 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
       }
     }
 
+    function autocompleteActive() {
+      return autocomplete.classList.contains('visible') && autocompleteItems.length > 0;
+    }
+
     function scheduleRender() {
       clearTimeout(renderTimer);
       rememberSource(editor.value);
+      if (autocompleteActive()) {
+        clearError();
+        setStatus('pending', 'completing…');
+        return;
+      }
       setStatus('pending', 'checking…');
       renderTimer = setTimeout(() => render(editor.value, currentPage()?.bbox), 180);
     }
@@ -526,6 +535,11 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
       autocompleteItems = candidates;
       autocompleteIndex = Math.min(autocompleteIndex, Math.max(0, candidates.length - 1));
       drawAutocomplete();
+      if (candidates.length) {
+        clearTimeout(renderTimer);
+        clearError();
+        setStatus('pending', 'completing…');
+      }
     }
 
     function acceptAutocomplete(index = autocompleteIndex) {
@@ -654,10 +668,16 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
     document.addEventListener('fullscreenchange', updateFullscreenButtons);
     document.addEventListener('webkitfullscreenchange', updateFullscreenButtons);
 
-    editor.addEventListener('input', () => { scheduleRender(); updateAutocomplete(); });
+    editor.addEventListener('input', () => {
+      updateAutocomplete();
+      scheduleRender();
+    });
     editor.addEventListener('scroll', positionErrorMarker);
     editor.addEventListener('click', () => updateAutocomplete());
-    editor.addEventListener('blur', () => setTimeout(hideAutocomplete, 80));
+    editor.addEventListener('blur', () => setTimeout(() => {
+      hideAutocomplete();
+      scheduleRender();
+    }, 80));
     editor.addEventListener('keydown', (event) => {
       if ((event.ctrlKey || event.metaKey) && event.code === 'Space') {
         event.preventDefault();
@@ -679,6 +699,7 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
       } else if (event.key === 'Escape') {
         event.preventDefault();
         hideAutocomplete();
+        scheduleRender();
       }
     });
 
