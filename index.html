@@ -15,40 +15,72 @@
       --muted: light-dark(#6c717c, #9da3af);
       --text: light-dark(#17191e, #eceef2);
       --accent: light-dark(#2563eb, #7da3ff);
-      --error: light-dark(#b42318, #ff8a80);
+      --error: light-dark(#c52a1d, #ff8a80);
+      --error-bg: light-dark(rgb(197 42 29 / .10), rgb(255 138 128 / .13));
       --editor-width: 40vw;
       --editor-height: 46vh;
     }
+
     * { box-sizing: border-box; }
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--panel-2); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     main { width: 100vw; height: 100dvh; display: grid; grid-template-columns: minmax(260px, var(--editor-width)) 7px minmax(0, 1fr); background: var(--panel-2); }
+
     .editor-pane { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; background: var(--panel); }
-    .topline { height: 43px; display: flex; align-items: center; gap: 8px; padding: 0 11px; border-bottom: 1px solid var(--border); user-select: none; }
-    .brand { flex: 0 0 auto; font-size: 13px; font-weight: 680; letter-spacing: .01em; }
-    #page-select { min-width: 84px; max-width: 160px; height: 27px; padding: 0 24px 0 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel-2); color: var(--text); font: 12px system-ui, sans-serif; outline: none; }
-    #page-select:focus { border-color: var(--accent); }
-    .icon-button { width: 27px; height: 27px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 7px; background: transparent; color: var(--muted); font: 18px/1 system-ui, sans-serif; cursor: pointer; }
+    .topline { height: 43px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border-bottom: 1px solid var(--border); user-select: none; }
+    .brand { flex: 0 0 auto; font-size: 13px; font-weight: 680; letter-spacing: .01em; margin-right: 2px; }
+
+    #page-select, #page-name {
+      height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--panel-2);
+      color: var(--text);
+      font: 12px system-ui, sans-serif;
+      outline: none;
+    }
+    #page-select { width: 86px; min-width: 70px; padding: 0 22px 0 7px; }
+    #page-name { width: 124px; min-width: 70px; padding: 0 8px; }
+    #page-select:focus, #page-name:focus { border-color: var(--accent); }
+
+    .icon-button { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 7px; background: transparent; color: var(--muted); font: 18px/1 system-ui, sans-serif; cursor: pointer; }
     .icon-button:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 7%, transparent); }
-    #status { margin-left: auto; max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    #status.ok { color: var(--muted); } #status.pending { color: var(--accent); } #status.error { color: var(--error); }
-    textarea { min-width: 0; min-height: 0; width: 100%; height: 100%; resize: none; border: 0; outline: 0; padding: 16px 17px 24px; background: transparent; color: var(--text); caret-color: var(--accent); font: 14px/1.58 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; tab-size: 2; }
+
+    #status { margin-left: auto; max-width: 35%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    #status.ok { color: var(--muted); }
+    #status.pending { color: var(--accent); }
+    #status.error { color: var(--error); }
+
+    .editor-wrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+    #error-line-marker { position: absolute; z-index: 0; left: 0; right: 0; height: 22px; display: none; background: var(--error-bg); border-left: 3px solid var(--error); pointer-events: none; }
+    textarea { position: relative; z-index: 1; min-width: 0; min-height: 0; width: 100%; height: 100%; resize: none; border: 0; outline: 0; padding: 16px 17px 24px; background: transparent; color: var(--text); caret-color: var(--accent); font: 14px/1.58 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; tab-size: 2; }
     textarea::selection { background: color-mix(in srgb, var(--accent) 25%, transparent); }
-    .hint { padding: 7px 13px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; line-height: 1.35; user-select: none; }
+
+    .hint { min-height: 30px; padding: 7px 13px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; line-height: 1.35; user-select: none; }
+    .hint.error { color: var(--error); border-top-color: color-mix(in srgb, var(--error) 35%, var(--border)); background: var(--error-bg); }
+
     .point-readback { max-height: 128px; overflow: auto; padding: 8px 13px 10px; border-top: 1px solid var(--border); background: color-mix(in srgb, var(--panel-2) 45%, transparent); }
     .point-readback .label { margin-bottom: 5px; color: var(--muted); font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; user-select: none; }
     #points { margin: 0; color: var(--muted); font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; }
+
     .splitter { position: relative; z-index: 5; cursor: col-resize; background: var(--border); touch-action: none; }
     .splitter::after { content: ""; position: absolute; inset: 0 -4px; }
     .splitter:hover, .splitter.dragging { background: var(--accent); }
+
     .board-pane { min-width: 0; min-height: 0; padding: 12px; background: var(--panel-2); }
     #board { width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / .06), rgb(0 0 0 / .3)); cursor: grab; touch-action: none; overscroll-behavior: contain; }
     #board:active { cursor: grabbing; }
     #validator { position: fixed; left: -10000px; top: -10000px; width: 400px; height: 400px; opacity: 0; pointer-events: none; }
+
     @media (max-width: 760px) {
       main { grid-template-columns: 1fr; grid-template-rows: minmax(180px, var(--editor-height)) 7px minmax(0, 1fr); }
-      .brand { display: none; } #page-select { max-width: 150px; } #status { max-width: 46%; }
-      .splitter { cursor: row-resize; } .splitter::after { inset: -4px 0; }
-      .board-pane { padding: 8px; } #board { border-radius: 8px; }
+      .brand { display: none; }
+      #page-select { width: 78px; }
+      #page-name { width: 108px; }
+      #status { max-width: 28%; }
+      .splitter { cursor: row-resize; }
+      .splitter::after { inset: -4px 0; }
+      .board-pane { padding: 8px; }
+      #board { border-radius: 8px; }
     }
   </style>
 </head>
@@ -57,14 +89,21 @@
     <section class="editor-pane">
       <div class="topline">
         <div class="brand">JessiePage</div>
-        <select id="page-select" aria-label="Construction page"></select>
+        <select id="page-select" aria-label="Switch page"></select>
+        <input id="page-name" type="text" maxlength="60" aria-label="Page name" title="Edit page name" />
         <button id="add-page" class="icon-button" title="New page" aria-label="New page">+</button>
         <div id="status">loading…</div>
       </div>
-      <textarea id="editor" spellcheck="false" aria-label="JessieCode editor"></textarea>
-      <div class="hint">Autosaved locally · drag canvas to pan · wheel/pinch to zoom · drag simple points to edit source</div>
+
+      <div class="editor-wrap">
+        <div id="error-line-marker" aria-hidden="true"></div>
+        <textarea id="editor" spellcheck="false" aria-label="JessieCode editor"></textarea>
+      </div>
+
+      <div id="hint" class="hint">Autosaved locally · drag canvas to pan · use board controls or wheel/pinch to zoom · drag simple points to edit source</div>
       <div class="point-readback"><div class="label">Points</div><pre id="points">—</pre></div>
     </section>
+
     <div id="splitter" class="splitter" role="separator" aria-label="Resize editor and canvas"></div>
     <section class="board-pane"><div id="board" class="jxgbox"></div></section>
   </main>
@@ -74,15 +113,20 @@
     const editor = document.getElementById('editor');
     const status = document.getElementById('status');
     const points = document.getElementById('points');
+    const hint = document.getElementById('hint');
+    const errorMarker = document.getElementById('error-line-marker');
     const layout = document.getElementById('layout');
     const splitter = document.getElementById('splitter');
     const pageSelect = document.getElementById('page-select');
+    const pageName = document.getElementById('page-name');
     const addPage = document.getElementById('add-page');
+
     const STORAGE_KEY = 'jessiepage-state-v1';
     const DEFAULT_BBOX = [-6, 6, 6, -6];
     const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
     let board;
     let renderTimer;
+    let errorLine = null;
     let state = { pages: [], currentPageId: null };
 
     const boardOptions = {
@@ -90,68 +134,160 @@
       axis: true,
       keepaspectratio: true,
       showCopyright: false,
-      showNavigation: false,
+      showNavigation: true,
+      showZoom: true,
+      showFullscreen: true,
+      showReload: false,
+      showScreenshot: false,
       browserPan: false,
       pan: { enabled: true, needShift: false, needTwoFingers: false },
       zoom: { enabled: true, wheel: true, needShift: false, pinch: true, center: 'auto' },
       resize: { enabled: true, throttle: 20 }
     };
 
-    function setStatus(kind, text) { status.className = kind; status.textContent = text; status.title = text; }
+    function setStatus(kind, text, title = text) {
+      status.className = kind;
+      status.textContent = text;
+      status.title = title;
+    }
+
     function newId() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
     function currentPage() { return state.pages.find((page) => page.id === state.currentPageId) || state.pages[0] || null; }
-    function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (err) { console.warn(err); setStatus('error', 'local save failed'); } }
+
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+      catch (err) { console.warn(err); setStatus('error', 'local save failed'); }
+    }
+
     function loadState() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY); if (!raw) return false;
-        const parsed = JSON.parse(raw); if (!parsed || !Array.isArray(parsed.pages) || !parsed.pages.length) return false;
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.pages) || !parsed.pages.length) return false;
         state = parsed;
         if (!state.pages.some((page) => page.id === state.currentPageId)) state.currentPageId = state.pages[0].id;
         return true;
       } catch (err) { console.warn(err); return false; }
     }
-    function refreshPageSelect() {
+
+    function refreshPageControls() {
       pageSelect.replaceChildren();
-      for (const page of state.pages) { const option = document.createElement('option'); option.value = page.id; option.textContent = page.name; pageSelect.appendChild(option); }
+      for (const page of state.pages) {
+        const option = document.createElement('option');
+        option.value = page.id;
+        option.textContent = page.name;
+        pageSelect.appendChild(option);
+      }
       pageSelect.value = state.currentPageId;
+      pageName.value = currentPage()?.name || '';
     }
-    function nextPageName() { let n = 1; const used = new Set(state.pages.map((page) => page.name)); while (used.has(`Page ${n}`)) n += 1; return `Page ${n}`; }
+
+    function nextPageName() {
+      let n = 1;
+      const used = new Set(state.pages.map((page) => page.name));
+      while (used.has(`Page ${n}`)) n += 1;
+      return `Page ${n}`;
+    }
+
     function makePage(name, source) { return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice() }; }
     function rememberSource(source) { const page = currentPage(); if (!page) return; page.source = source; saveState(); }
-    function rememberView() { const page = currentPage(); if (!page || !board) return; const bbox = board.getBoundingBox(); if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) { page.bbox = bbox.slice(); saveState(); } }
+    function rememberView() {
+      const page = currentPage();
+      if (!page || !board) return;
+      const bbox = board.getBoundingBox();
+      if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) { page.bbox = bbox.slice(); saveState(); }
+    }
+
+    function parseErrorLine(message) {
+      const match = String(message).match(/Parse error on line\s+(\d+)/i);
+      return match ? Number(match[1]) : null;
+    }
+
+    function positionErrorMarker() {
+      if (!errorLine) { errorMarker.style.display = 'none'; return; }
+      const style = getComputedStyle(editor);
+      const lineHeight = Number.parseFloat(style.lineHeight) || 22;
+      const paddingTop = Number.parseFloat(style.paddingTop) || 0;
+      const top = paddingTop + (errorLine - 1) * lineHeight - editor.scrollTop;
+      errorMarker.style.height = `${lineHeight}px`;
+      errorMarker.style.top = `${top}px`;
+      errorMarker.style.display = (top + lineHeight < 0 || top > editor.clientHeight) ? 'none' : 'block';
+    }
+
+    function clearError() {
+      errorLine = null;
+      errorMarker.style.display = 'none';
+      hint.className = 'hint';
+      hint.textContent = 'Autosaved locally · drag canvas to pan · use board controls or wheel/pinch to zoom · drag simple points to edit source';
+    }
+
+    function showError(err) {
+      const message = err?.message || String(err);
+      errorLine = parseErrorLine(message);
+      positionErrorMarker();
+      hint.className = 'hint error';
+      hint.textContent = errorLine ? `Line ${errorLine}: ${message.split('\n')[0]}` : message.split('\n')[0];
+      setStatus('error', errorLine ? `line ${errorLine}` : 'error', message);
+    }
 
     function validate(code) {
       let testBoard;
       try {
-        testBoard = JXG.JSXGraph.initBoard('validator', { ...boardOptions, axis: false, pan: { enabled: false }, zoom: { enabled: false }, resize: { enabled: false }, showNavigation: false });
-        testBoard.jc.parse(code); testBoard.update();
+        testBoard = JXG.JSXGraph.initBoard('validator', {
+          ...boardOptions,
+          axis: false,
+          showNavigation: false,
+          showFullscreen: false,
+          pan: { enabled: false },
+          zoom: { enabled: false },
+          resize: { enabled: false }
+        });
+        testBoard.jc.parse(code);
+        testBoard.update();
       } finally { if (testBoard) JXG.JSXGraph.freeBoard(testBoard); }
     }
+
     function formatNumber(value) { const clean = Math.abs(value) < 1e-12 ? 0 : value; return Number(clean.toFixed(6)).toString(); }
     function escapeRegex(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
     function simplePointNames(code) {
       const names = new Set();
       const assignment = new RegExp(String.raw`^\s*([A-Za-z_$][\w$]*)\s*=\s*point\s*\(\s*${NUMBER}\s*,\s*${NUMBER}\s*\)\s*;?(?:\s*\/\/.*)?\s*$`);
       for (const line of code.split('\n')) { const match = line.match(assignment); if (match) names.add(match[1]); }
       return names;
     }
+
     function syncSimplePointToSource(name, x, y) {
       const escapedName = escapeRegex(name);
       const assignment = new RegExp(String.raw`^(\s*${escapedName}\s*=\s*point\s*\(\s*)(${NUMBER})(\s*,\s*)(${NUMBER})(\s*\)\s*;?(?:\s*\/\/.*)?\s*)$`);
       const lines = editor.value.split('\n');
       for (let i = 0; i < lines.length; i += 1) {
-        const match = lines[i].match(assignment); if (!match) continue;
+        const match = lines[i].match(assignment);
+        if (!match) continue;
         lines[i] = match[1] + formatNumber(x) + match[3] + formatNumber(y) + match[5];
-        const selectionStart = editor.selectionStart; const selectionEnd = editor.selectionEnd;
-        editor.value = lines.join('\n'); editor.setSelectionRange(selectionStart, selectionEnd); rememberSource(editor.value); return true;
+        const selectionStart = editor.selectionStart;
+        const selectionEnd = editor.selectionEnd;
+        editor.value = lines.join('\n');
+        editor.setSelectionRange(selectionStart, selectionEnd);
+        rememberSource(editor.value);
+        return true;
       }
       return false;
     }
+
     function namedPoints() {
       if (!board) return [];
-      return board.objectsList.filter((el) => el && el.elType === 'point' && el.name && typeof el.X === 'function' && typeof el.Y === 'function' && Number.isFinite(el.X()) && Number.isFinite(el.Y())).sort((a, b) => a.name.localeCompare(b.name));
+      return board.objectsList
+        .filter((el) => el && el.elType === 'point' && el.name && typeof el.X === 'function' && typeof el.Y === 'function' && Number.isFinite(el.X()) && Number.isFinite(el.Y()))
+        .sort((a, b) => a.name.localeCompare(b.name));
     }
-    function updatePointReadback() { const list = namedPoints(); points.textContent = list.length ? list.map((p) => `${p.name} = (${formatNumber(p.X())}, ${formatNumber(p.Y())})`).join('\n') : 'No named points'; }
+
+    function updatePointReadback() {
+      const list = namedPoints();
+      points.textContent = list.length ? list.map((p) => `${p.name} = (${formatNumber(p.X())}, ${formatNumber(p.Y())})`).join('\n') : 'No named points';
+    }
+
     function bindSimplePointSourceSync(code) {
       const writableNames = simplePointNames(code);
       for (const point of namedPoints()) {
@@ -160,59 +296,141 @@
         point.on('up', () => { syncSimplePointToSource(point.name, point.X(), point.Y()); updatePointReadback(); });
       }
     }
+
     function makeBoard(code, bbox) {
       if (board) JXG.JSXGraph.freeBoard(board);
       board = JXG.JSXGraph.initBoard('board', { ...boardOptions, boundingbox: Array.isArray(bbox) ? bbox : DEFAULT_BBOX });
-      board.jc.parse(code); board.on('update', updatePointReadback); board.on('boundingbox', rememberView); board.update(); bindSimplePointSourceSync(code); updatePointReadback();
+      board.jc.parse(code);
+      board.on('update', updatePointReadback);
+      board.on('boundingbox', rememberView);
+      board.update();
+      bindSimplePointSourceSync(code);
+      updatePointReadback();
     }
+
     function render(code, bbox) {
       try {
-        validate(code); makeBoard(code, bbox);
-        const page = currentPage(); if (page) { page.lastGoodSource = code; page.source = code; saveState(); }
-        setStatus('ok', 'saved'); return true;
-      } catch (err) { const message = err?.message || String(err); setStatus('error', message); console.error(err); return false; }
+        validate(code);
+        makeBoard(code, bbox);
+        const page = currentPage();
+        if (page) { page.lastGoodSource = code; page.source = code; saveState(); }
+        clearError();
+        setStatus('ok', 'saved');
+        return true;
+      } catch (err) {
+        showError(err);
+        console.error(err);
+        return false;
+      }
     }
+
     function scheduleRender() {
-      clearTimeout(renderTimer); rememberSource(editor.value); setStatus('pending', 'checking…');
+      clearTimeout(renderTimer);
+      rememberSource(editor.value);
+      setStatus('pending', 'checking…');
       renderTimer = setTimeout(() => { const page = currentPage(); render(editor.value, page?.bbox); }, 180);
     }
+
     function showCurrentPage() {
-      clearTimeout(renderTimer); const page = currentPage(); if (!page) return;
+      clearTimeout(renderTimer);
+      const page = currentPage();
+      if (!page) return;
       editor.value = page.source || '';
-      if (!render(editor.value, page.bbox) && page.lastGoodSource && page.lastGoodSource !== page.source) { try { makeBoard(page.lastGoodSource, page.bbox); } catch (err) { console.error(err); } }
-      refreshPageSelect();
+      if (!render(editor.value, page.bbox) && page.lastGoodSource && page.lastGoodSource !== page.source) {
+        try { makeBoard(page.lastGoodSource, page.bbox); } catch (err) { console.error(err); }
+      }
+      refreshPageControls();
     }
+
     async function initialize() {
       if (!loadState()) {
         let source = '// New construction\nA = point(-2, 0);\nB = point(2, 0);\nline(A, B);\n';
         try { const response = await fetch('./construction.jessie', { cache: 'no-store' }); if (response.ok) source = await response.text(); } catch (err) { console.warn(err); }
-        const page = makePage('Page 1', source); state.pages = [page]; state.currentPageId = page.id; saveState();
+        const page = makePage('Page 1', source);
+        state.pages = [page];
+        state.currentPageId = page.id;
+        saveState();
       }
-      refreshPageSelect(); showCurrentPage();
+      refreshPageControls();
+      showCurrentPage();
     }
 
     function setSplitFromPointer(event) {
       const rect = layout.getBoundingClientRect();
       if (window.matchMedia('(max-width: 760px)').matches) {
-        const height = Math.max(180, Math.min(rect.height - 180, event.clientY - rect.top)); document.documentElement.style.setProperty('--editor-height', `${height}px`); localStorage.setItem('jessiepage-editor-height', String(height));
+        const height = Math.max(180, Math.min(rect.height - 180, event.clientY - rect.top));
+        document.documentElement.style.setProperty('--editor-height', `${height}px`);
+        localStorage.setItem('jessiepage-editor-height', String(height));
       } else {
-        const width = Math.max(260, Math.min(rect.width - 300, event.clientX - rect.left)); document.documentElement.style.setProperty('--editor-width', `${width}px`); localStorage.setItem('jessiepage-editor-width', String(width));
+        const width = Math.max(260, Math.min(rect.width - 300, event.clientX - rect.left));
+        document.documentElement.style.setProperty('--editor-width', `${width}px`);
+        localStorage.setItem('jessiepage-editor-width', String(width));
       }
       if (board) board.updateContainerDims();
     }
-    splitter.addEventListener('pointerdown', (event) => {
-      event.preventDefault(); splitter.classList.add('dragging'); splitter.setPointerCapture(event.pointerId);
-      const move = (moveEvent) => setSplitFromPointer(moveEvent);
-      const stop = () => { splitter.classList.remove('dragging'); splitter.removeEventListener('pointermove', move); splitter.removeEventListener('pointerup', stop); splitter.removeEventListener('pointercancel', stop); };
-      splitter.addEventListener('pointermove', move); splitter.addEventListener('pointerup', stop); splitter.addEventListener('pointercancel', stop);
-    });
-    pageSelect.addEventListener('change', () => { rememberSource(editor.value); rememberView(); state.currentPageId = pageSelect.value; saveState(); showCurrentPage(); });
-    addPage.addEventListener('click', () => { rememberSource(editor.value); rememberView(); const page = makePage(nextPageName(), '// New construction\n'); state.pages.push(page); state.currentPageId = page.id; saveState(); showCurrentPage(); editor.focus(); });
-    editor.addEventListener('input', scheduleRender);
 
-    const savedWidth = Number(localStorage.getItem('jessiepage-editor-width')); const savedHeight = Number(localStorage.getItem('jessiepage-editor-height'));
+    splitter.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      splitter.classList.add('dragging');
+      splitter.setPointerCapture(event.pointerId);
+      const move = (moveEvent) => setSplitFromPointer(moveEvent);
+      const stop = () => {
+        splitter.classList.remove('dragging');
+        splitter.removeEventListener('pointermove', move);
+        splitter.removeEventListener('pointerup', stop);
+        splitter.removeEventListener('pointercancel', stop);
+      };
+      splitter.addEventListener('pointermove', move);
+      splitter.addEventListener('pointerup', stop);
+      splitter.addEventListener('pointercancel', stop);
+    });
+
+    pageSelect.addEventListener('change', () => {
+      rememberSource(editor.value);
+      rememberView();
+      state.currentPageId = pageSelect.value;
+      saveState();
+      showCurrentPage();
+    });
+
+    pageName.addEventListener('input', () => {
+      const page = currentPage();
+      if (!page) return;
+      page.name = pageName.value || 'Untitled';
+      saveState();
+      const option = pageSelect.querySelector(`option[value="${CSS.escape(page.id)}"]`);
+      if (option) option.textContent = page.name;
+    });
+
+    pageName.addEventListener('blur', () => {
+      const page = currentPage();
+      if (!page) return;
+      page.name = pageName.value.trim() || 'Untitled';
+      pageName.value = page.name;
+      saveState();
+      refreshPageControls();
+    });
+
+    addPage.addEventListener('click', () => {
+      rememberSource(editor.value);
+      rememberView();
+      const page = makePage(nextPageName(), '// New construction\n');
+      state.pages.push(page);
+      state.currentPageId = page.id;
+      saveState();
+      showCurrentPage();
+      pageName.focus();
+      pageName.select();
+    });
+
+    editor.addEventListener('input', scheduleRender);
+    editor.addEventListener('scroll', positionErrorMarker);
+
+    const savedWidth = Number(localStorage.getItem('jessiepage-editor-width'));
+    const savedHeight = Number(localStorage.getItem('jessiepage-editor-height'));
     if (Number.isFinite(savedWidth) && savedWidth > 0) document.documentElement.style.setProperty('--editor-width', `${savedWidth}px`);
     if (Number.isFinite(savedHeight) && savedHeight > 0) document.documentElement.style.setProperty('--editor-height', `${savedHeight}px`);
+
     initialize();
   </script>
 </body>
