@@ -1,31 +1,12 @@
-// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
-// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
-// Blue points are inputs. Derived points follow their parents.
-// Coordinates implement the Euclidean plane; numerical checks are not proofs.
-// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
-$board.setBoundingBox([-9, 9, 13, -9], true);
-near = function(a,b) { return abs(a-b) < 0.000001*(1+abs(a)+abs(b));
-};
-pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
-};
-dp = function(f,g,n) { return point(f,g) <<name:n, size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
-};
-seg = function(a,b) { return segment(a,b) <<strokeWidth:2, strokeColor:'#34465d'>>;
-};
-aux = function(a,b) { return line(a,b) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;
-};
-par = function(a,b,c,n) { return dp(function(){return X(b)+X(c)-X(a);},function(){return Y(b)+Y(c)-Y(a);},n);
-};
 // I.31: Draw a parallel through a point
-// Euclid copies an alternate angle by I.23, then invokes I.27. Here D=C+(B-A) is the explicit coordinate implementation of the resulting parallel.
-pA=pt(-4,0,'A');
-pB=pt(4,0,'B');
-pC=pt(-1,3,'C');
-l=aux(pA,pB);
-pD=par(pA,pB,pC,'D');
-m=aux(pC,pD);
-seg(pA,pC);
-check = function(){return near((X(pB)-X(pA))*(Y(pD)-Y(pC))-(Y(pB)-Y(pA))*(X(pD)-X(pC)),0);};
+// Drag plain point assignments to update their coordinates in the editor.
+$board.setBoundingBox([-9, 9, 13, -9], true);
 
+A = point(-4, 0);
+B = point(4, 0);
+C = point(-1, 3);
+l=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;
+D=point(map () -> X(B)+X(C)-X(A),map () -> Y(B)+Y(C)-Y(A)) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
+m=line(C,D) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;
+segment(A,C) <<strokeWidth:2, strokeColor:'#34465d'>>;
 text(-8,8,'I.31') <<display:'internal',fontSize:20>>;
-text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;

@@ -1,31 +1,14 @@
-// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
-// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
-// Blue points are inputs. Derived points follow their parents.
-// Coordinates implement the Euclidean plane; numerical checks are not proofs.
-// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
-$board.setBoundingBox([-9, 9, 13, -9], true);
-near = function(a,b) { return abs(a-b) < 0.000001*(1+abs(a)+abs(b));
-};
-pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
-};
-dp = function(f,g,n) { return point(f,g) <<name:n, size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
-};
-aux = function(a,b) { return line(a,b) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;
-};
-par = function(a,b,c,n) { return dp(function(){return X(b)+X(c)-X(a);},function(){return Y(b)+Y(c)-Y(a);},n);
-};
 // I.30: Lines parallel to the same line
-// A transversal gives equal alternate angles via I.29, then I.27 proves the outer lines parallel.
-pA=pt(-4,0,'A');
-pB=pt(4,0,'B');
-pC=pt(-3,3,'C');
-pD=pt(-2,-3,'D');
-l=aux(pA,pB);
-m=parallel(l,pC) <<dash:2>>;
-k=parallel(l,pD) <<dash:2>>;
-pE=par(pA,pB,pC,'E');
-pF=par(pA,pB,pD,'F');
-check = function(){return near((X(pE)-X(pC))*(Y(pF)-Y(pD))-(Y(pE)-Y(pC))*(X(pF)-X(pD)),0);};
+// Drag plain point assignments to update their coordinates in the editor.
+$board.setBoundingBox([-9, 9, 13, -9], true);
 
+A = point(-4, 0);
+B = point(4, 0);
+C = point(-3, 3);
+D = point(-2, -3);
+l=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;
+m=parallel(l,C) <<dash:2>>;
+k=parallel(l,D) <<dash:2>>;
+E=point(map () -> X(B)+X(C)-X(A),map () -> Y(B)+Y(C)-Y(A)) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
+F=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
 text(-8,8,'I.30') <<display:'internal',fontSize:20>>;
-text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;
