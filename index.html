@@ -72,6 +72,39 @@
     .board-pane { min-width: 0; min-height: 0; padding: 12px; background: var(--panel-2); }
     #board { width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / .06), rgb(0 0 0 / .3)); cursor: grab; touch-action: none; overscroll-behavior: contain; }
     #board:active { cursor: grabbing; }
+
+    /* JSXGraph navigation: panning is already done by dragging the canvas, so
+       remove the four arrow buttons and make the useful controls easier to hit. */
+    #board .JXG_navigation_button_left,
+    #board .JXG_navigation_button_right,
+    #board .JXG_navigation_button_up,
+    #board .JXG_navigation_button_down {
+      display: none !important;
+    }
+
+    #board .JXG_navigation {
+      display: flex !important;
+      align-items: center;
+      gap: 5px;
+      right: 8px !important;
+      bottom: 8px !important;
+      padding: 0 !important;
+      background: transparent !important;
+    }
+
+    #board .JXG_navigation_button {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      width: 36px !important;
+      height: 36px !important;
+      min-width: 36px !important;
+      padding: 0 !important;
+      border-radius: 8px !important;
+      font-size: 20px !important;
+      line-height: 1 !important;
+    }
+
     #validator { position: fixed; left: -10000px; top: -10000px; width: 400px; height: 400px; opacity: 0; pointer-events: none; }
 
     @media (max-width: 760px) {
@@ -89,6 +122,14 @@
       .splitter::after { inset: -4px 0; }
       .board-pane { padding: 8px; }
       #board { border-radius: 8px; }
+      #board .JXG_navigation { gap: 7px; right: 10px !important; bottom: 10px !important; }
+      #board .JXG_navigation_button {
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        font-size: 25px !important;
+        border-radius: 10px !important;
+      }
     }
   </style>
 </head>
