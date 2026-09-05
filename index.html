@@ -7,65 +7,259 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
   <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
   <style>
+    :root {
+      color-scheme: light dark;
+      --panel: light-dark(#f7f7f8, #17181b);
+      --panel-2: light-dark(#ffffff, #111215);
+      --border: light-dark(#d9dadd, #303238);
+      --muted: light-dark(#666a73, #9ca1ad);
+      --accent: light-dark(#2563eb, #7aa2ff);
+      --error: light-dark(#b42318, #ff8a80);
+      --editor-width: 40vw;
+      --editor-height: 46vh;
+    }
+
     * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; }
-    header { height: 52px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #ccc; }
-    header strong { margin-right: auto; }
-    button { padding: 6px 11px; font: inherit; cursor: pointer; }
-    main { height: calc(100vh - 52px); display: grid; grid-template-columns: minmax(300px, 42%) 1fr; }
-    .editor-pane { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid #ccc; }
-    textarea { flex: 1; width: 100%; resize: none; border: 0; outline: 0; padding: 14px; font: 15px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    #status { min-height: 32px; padding: 7px 10px; border-top: 1px solid #ddd; font: 12px/1.4 ui-monospace, monospace; white-space: pre-wrap; }
-    #point-readback { border-top: 1px solid #ddd; padding: 8px 10px; max-height: 145px; overflow: auto; }
-    #point-readback strong { display: block; margin-bottom: 4px; font-size: 12px; }
-    #points { margin: 0; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; }
-    .board-pane { min-width: 0; min-height: 0; padding: 10px; }
-    #board { width: 100%; height: 100%; border: 0; }
-    #validator { position: fixed; left: -10000px; top: -10000px; width: 400px; height: 400px; opacity: 0; pointer-events: none; }
-    .error { color: #b00020; }
-    .pending { opacity: .65; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--panel-2);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: 100vw;
+      height: 100dvh;
+      display: grid;
+      grid-template-columns: minmax(260px, var(--editor-width)) 8px minmax(0, 1fr);
+      background: var(--panel-2);
+    }
+
+    .editor-pane {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto auto;
+      background: var(--panel);
+    }
+
+    .topline {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 13px;
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+    }
+
+    .brand {
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: .01em;
+    }
+
+    #status {
+      margin-left: auto;
+      max-width: 65%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    #status.ok { color: var(--muted); }
+    #status.pending { color: var(--accent); }
+    #status.error { color: var(--error); }
+
+    textarea {
+      min-width: 0;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+      resize: none;
+      border: 0;
+      outline: 0;
+      padding: 16px 17px 24px;
+      background: transparent;
+      color: inherit;
+      caret-color: var(--accent);
+      font: 14px/1.58 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      tab-size: 2;
+    }
+
+    textarea::selection {
+      background: color-mix(in srgb, var(--accent) 25%, transparent);
+    }
+
+    .hint {
+      padding: 7px 13px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+      user-select: none;
+    }
+
+    .point-readback {
+      max-height: 132px;
+      overflow: auto;
+      padding: 8px 13px 10px;
+      border-top: 1px solid var(--border);
+      background: color-mix(in srgb, var(--panel-2) 45%, transparent);
+    }
+
+    .point-readback .label {
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 650;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      user-select: none;
+    }
+
+    #points {
+      margin: 0;
+      color: var(--muted);
+      font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    .splitter {
+      position: relative;
+      z-index: 5;
+      cursor: col-resize;
+      background: var(--border);
+      touch-action: none;
+    }
+
+    .splitter::after {
+      content: "";
+      position: absolute;
+      inset: 0 -3px;
+    }
+
+    .splitter:hover,
+    .splitter.dragging {
+      background: var(--accent);
+    }
+
+    .board-pane {
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+      background: var(--panel-2);
+    }
+
+    #board {
+      width: 100%;
+      height: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: light-dark(#fff, #fdfdfd);
+      box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / .06), rgb(0 0 0 / .3));
+      cursor: grab;
+    }
+
+    #board:active { cursor: grabbing; }
+
+    #validator {
+      position: fixed;
+      left: -10000px;
+      top: -10000px;
+      width: 400px;
+      height: 400px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
     @media (max-width: 760px) {
-      main { height: calc(100vh - 52px); grid-template-columns: 1fr; grid-template-rows: 48% 52%; }
-      .editor-pane { border-right: 0; border-bottom: 1px solid #ccc; }
+      main {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(180px, var(--editor-height)) 8px minmax(0, 1fr);
+      }
+
+      .splitter { cursor: row-resize; }
+      .splitter::after { inset: -3px 0; }
+      .board-pane { padding: 8px; }
+      #board { border-radius: 8px; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <strong>JessiePage</strong>
-    <button id="run" title="Ctrl/Cmd + Enter">Run now</button>
-    <button id="reload">Reload file</button>
-  </header>
-
-  <main>
+  <main id="layout">
     <section class="editor-pane">
-      <textarea id="editor" spellcheck="false"></textarea>
-      <div id="status">Loading construction.jessie…</div>
-      <div id="point-readback">
-        <strong>Point coordinates</strong>
+      <div class="topline">
+        <div class="brand">JessiePage</div>
+        <div id="status">loading…</div>
+      </div>
+
+      <textarea id="editor" spellcheck="false" aria-label="JessieCode editor"></textarea>
+
+      <div class="hint">
+        Live parse · drag empty canvas to pan · wheel/pinch to zoom · drag simple points to write coordinates back
+      </div>
+
+      <div class="point-readback">
+        <div class="label">Points</div>
         <pre id="points">—</pre>
       </div>
     </section>
+
+    <div id="splitter" class="splitter" role="separator" aria-label="Resize editor and canvas"></div>
+
     <section class="board-pane">
       <div id="board" class="jxgbox"></div>
     </section>
   </main>
+
   <div id="validator" aria-hidden="true"></div>
 
   <script>
     const editor = document.getElementById('editor');
     const status = document.getElementById('status');
     const points = document.getElementById('points');
+    const layout = document.getElementById('layout');
+    const splitter = document.getElementById('splitter');
+
     let board;
     let renderTimer;
+
+    const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
 
     const boardOptions = {
       boundingbox: [-6, 6, 6, -6],
       axis: true,
       keepaspectratio: true,
       showCopyright: false,
-      showNavigation: true
+      showNavigation: false,
+      pan: {
+        enabled: true,
+        needShift: false,
+        needTwoFingers: false
+      },
+      zoom: {
+        enabled: true,
+        wheel: true,
+        pinch: true
+      },
+      resize: {
+        enabled: true,
+        throttle: 20
+      }
     };
+
+    function setStatus(kind, text) {
+      status.className = kind;
+      status.textContent = text;
+      status.title = text;
+    }
 
     function validate(code) {
       let testBoard;
@@ -73,6 +267,9 @@
         testBoard = JXG.JSXGraph.initBoard('validator', {
           ...boardOptions,
           axis: false,
+          pan: { enabled: false },
+          zoom: { enabled: false },
+          resize: { enabled: false },
           showNavigation: false
         });
         testBoard.jc.parse(code);
@@ -82,31 +279,97 @@
       }
     }
 
-    function updatePointReadback() {
-      if (!board) {
-        points.textContent = '—';
-        return;
+    function formatNumber(value) {
+      const clean = Math.abs(value) < 1e-12 ? 0 : value;
+      return Number(clean.toFixed(6)).toString();
+    }
+
+    function escapeRegex(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function simplePointNames(code) {
+      const names = new Set();
+      const assignment = new RegExp(
+        String.raw`^\s*([A-Za-z_$][\w$]*)\s*=\s*point\s*\(\s*${NUMBER}\s*,\s*${NUMBER}\s*\)\s*;?(?:\s*\/\/.*)?\s*$`
+      );
+
+      for (const line of code.split('\n')) {
+        const match = line.match(assignment);
+        if (match) names.add(match[1]);
+      }
+      return names;
+    }
+
+    function syncSimplePointToSource(name, x, y) {
+      const escapedName = escapeRegex(name);
+      const assignment = new RegExp(
+        String.raw`^(\s*${escapedName}\s*=\s*point\s*\(\s*)(${NUMBER})(\s*,\s*)(${NUMBER})(\s*\)\s*;?(?:\s*\/\/.*)?\s*)$`
+      );
+
+      const lines = editor.value.split('\n');
+      for (let i = 0; i < lines.length; i += 1) {
+        const match = lines[i].match(assignment);
+        if (!match) continue;
+
+        lines[i] = match[1] + formatNumber(x) + match[3] + formatNumber(y) + match[5];
+
+        // Setting textarea.value does not emit an input event, deliberately:
+        // the point is already at this position, so reparsing would only cause flicker.
+        const selectionStart = editor.selectionStart;
+        const selectionEnd = editor.selectionEnd;
+        editor.value = lines.join('\n');
+        editor.setSelectionRange(selectionStart, selectionEnd);
+        return true;
       }
 
-      const namedPoints = board.objectsList
-        .filter((el) => el && el.elType === 'point' && el.name && typeof el.X === 'function' && typeof el.Y === 'function')
-        .filter((el) => Number.isFinite(el.X()) && Number.isFinite(el.Y()))
-        .sort((a, b) => a.name.localeCompare(b.name));
+      return false;
+    }
 
-      points.textContent = namedPoints.length
-        ? namedPoints.map((p) => `${p.name} = (${formatNumber(p.X())}, ${formatNumber(p.Y())})`).join('\n')
+    function namedPoints() {
+      if (!board) return [];
+
+      return board.objectsList
+        .filter((el) =>
+          el &&
+          el.elType === 'point' &&
+          el.name &&
+          typeof el.X === 'function' &&
+          typeof el.Y === 'function' &&
+          Number.isFinite(el.X()) &&
+          Number.isFinite(el.Y())
+        )
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    function updatePointReadback() {
+      const list = namedPoints();
+      points.textContent = list.length
+        ? list.map((p) => `${p.name} = (${formatNumber(p.X())}, ${formatNumber(p.Y())})`).join('\n')
         : 'No named points';
     }
 
-    function formatNumber(value) {
-      const rounded = Math.abs(value) < 1e-12 ? 0 : value;
-      return Number(rounded.toFixed(6)).toString();
+    function bindSimplePointSourceSync(code) {
+      const writableNames = simplePointNames(code);
+
+      for (const point of namedPoints()) {
+        if (!writableNames.has(point.name)) continue;
+
+        point.on('drag', () => {
+          syncSimplePointToSource(point.name, point.X(), point.Y());
+          updatePointReadback();
+        });
+
+        point.on('up', () => {
+          syncSimplePointToSource(point.name, point.X(), point.Y());
+          updatePointReadback();
+        });
+      }
     }
 
     function render(code) {
       try {
-        // Parse on an off-screen board first. If this fails, keep the last good
-        // construction on screen instead of replacing it with a broken board.
+        // Test first. Invalid edits leave the last good board untouched.
         validate(code);
 
         if (board) JXG.JSXGraph.freeBoard(board);
@@ -114,14 +377,14 @@
         board.jc.parse(code);
         board.on('update', updatePointReadback);
         board.update();
-        updatePointReadback();
 
-        status.className = '';
-        status.textContent = 'OK — live update enabled';
+        bindSimplePointSourceSync(code);
+        updatePointReadback();
+        setStatus('ok', 'valid');
         return true;
       } catch (err) {
-        status.className = 'error';
-        status.textContent = err?.message || String(err);
+        const message = err?.message || String(err);
+        setStatus('error', message);
         console.error(err);
         return false;
       }
@@ -129,9 +392,8 @@
 
     function scheduleRender() {
       clearTimeout(renderTimer);
-      status.className = 'pending';
-      status.textContent = 'Checking…';
-      renderTimer = setTimeout(() => render(editor.value), 220);
+      setStatus('pending', 'checking…');
+      renderTimer = setTimeout(() => render(editor.value), 180);
     }
 
     async function loadFile() {
@@ -141,24 +403,54 @@
         editor.value = await response.text();
         render(editor.value);
       } catch (err) {
-        status.className = 'error';
-        status.textContent = err?.message || String(err);
+        setStatus('error', err?.message || String(err));
       }
     }
 
-    editor.addEventListener('input', scheduleRender);
-    document.getElementById('run').addEventListener('click', () => {
-      clearTimeout(renderTimer);
-      render(editor.value);
-    });
-    document.getElementById('reload').addEventListener('click', loadFile);
-    document.addEventListener('keydown', (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-        event.preventDefault();
-        clearTimeout(renderTimer);
-        render(editor.value);
+    function setSplitFromPointer(event) {
+      const rect = layout.getBoundingClientRect();
+
+      if (window.matchMedia('(max-width: 760px)').matches) {
+        const height = Math.max(180, Math.min(rect.height - 180, event.clientY - rect.top));
+        document.documentElement.style.setProperty('--editor-height', `${height}px`);
+        localStorage.setItem('jessiepage-editor-height', String(height));
+      } else {
+        const width = Math.max(260, Math.min(rect.width - 300, event.clientX - rect.left));
+        document.documentElement.style.setProperty('--editor-width', `${width}px`);
+        localStorage.setItem('jessiepage-editor-width', String(width));
       }
+
+      if (board) board.updateContainerDims();
+    }
+
+    splitter.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      splitter.classList.add('dragging');
+      splitter.setPointerCapture(event.pointerId);
+
+      const move = (moveEvent) => setSplitFromPointer(moveEvent);
+      const stop = () => {
+        splitter.classList.remove('dragging');
+        splitter.removeEventListener('pointermove', move);
+        splitter.removeEventListener('pointerup', stop);
+        splitter.removeEventListener('pointercancel', stop);
+      };
+
+      splitter.addEventListener('pointermove', move);
+      splitter.addEventListener('pointerup', stop);
+      splitter.addEventListener('pointercancel', stop);
     });
+
+    const savedWidth = Number(localStorage.getItem('jessiepage-editor-width'));
+    const savedHeight = Number(localStorage.getItem('jessiepage-editor-height'));
+    if (Number.isFinite(savedWidth) && savedWidth > 0) {
+      document.documentElement.style.setProperty('--editor-width', `${savedWidth}px`);
+    }
+    if (Number.isFinite(savedHeight) && savedHeight > 0) {
+      document.documentElement.style.setProperty('--editor-height', `${savedHeight}px`);
+    }
+
+    editor.addEventListener('input', scheduleRender);
 
     loadFile();
   </script>
