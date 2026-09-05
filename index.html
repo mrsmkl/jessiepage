@@ -143,7 +143,7 @@
     const STORAGE_KEY = 'jessiepage-state-v1';
     const DEFAULT_BBOX = [-6, 6, 6, -6];
     const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
-    const BUILTIN_EXAMPLES_VERSION = 3;
+    const BUILTIN_EXAMPLES_VERSION = 4;
     const ERROR_IDLE_MS = 700;
     const AUTOCOMPLETE_WORDS = [
       ['point', 'point(', 'geometry'],
@@ -206,6 +206,116 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
 
     // Standalone JessieCode diagrams, installed once as editable local pages.
     BUILTIN_EXAMPLES.push(...[
+  {
+    "key": "euclid-postulate-01",
+    "name": "Euclid · Postulate 1 · Join two points",
+    "bbox": [
+      -10,
+      7,
+      10,
+      -7
+    ],
+    "source": "// Euclid Book I — Postulate 1: Join two points\n// A straight segment can be drawn between any two points.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.1 onward.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-4, -1);\nB = point(4, 2);\nsegment(A,B) <<strokeWidth:3>>;\ntext(-9,-5,'A straight segment joins A and B.') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Postulate 1: Join two points') <<display:'internal',fontSize:18>>;\n"
+  },
+  {
+    "key": "euclid-postulate-02",
+    "name": "Euclid · Postulate 2 · Extend a straight segment",
+    "bbox": [
+      -10,
+      7,
+      10,
+      -7
+    ],
+    "source": "// Euclid Book I — Postulate 2: Extend a straight segment\n// A finite straight line can be extended continuously along the same straight line.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.2, I.5, I.16, I.20.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-3, 0);\nB = point(2, 1);\nline(A,B) <<strokeColor:'#99a4af',dash:2>>;\nsegment(A,B) <<strokeWidth:3>>;\nC=point(map () -> 2*X(B)-X(A), map () -> 2*Y(B)-Y(A));\nsegment(B,C) <<strokeWidth:3,strokeColor:'#b45b27'>>;\ntext(-9,-5,'AB continues straight through B to C and beyond.') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Postulate 2: Extend a straight segment') <<display:'internal',fontSize:18>>;\n"
+  },
+  {
+    "key": "euclid-postulate-03",
+    "name": "Euclid · Postulate 3 · Draw a circle",
+    "bbox": [
+      -10,
+      7,
+      10,
+      -7
+    ],
+    "source": "// Euclid Book I — Postulate 3: Draw a circle\n// A circle can be drawn with any center and distance.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.1–3, I.9–12, I.22.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nO = point(0, 0);\nA = point(3, 1);\nc=circle(O,A) <<strokeWidth:3>>;\nsegment(O,A) <<dash:2>>;\ntext(-9,-5,'Center O; radius OA. Move either point.') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Postulate 3: Draw a circle') <<display:'internal',fontSize:18>>;\n"
+  },
+  {
+    "key": "euclid-postulate-04",
+    "name": "Euclid · Postulate 4 · All right angles are equal",
+    "bbox": [
+      -10,
+      7,
+      10,
+      -7
+    ],
+    "source": "// Euclid Book I — Postulate 4: All right angles are equal\n// All right angles are equal to one another, regardless of orientation or size.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.13–15, I.29, I.46–48.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-6, 0);\nB = point(-3, 0);\nC=point(map () -> X(A)-(Y(B)-Y(A)),map () -> Y(A)+X(B)-X(A));\nD = point(2, -1);\nE = point(4, 1);\nF=point(map () -> X(D)-1.2*(Y(E)-Y(D)),map () -> Y(D)+1.2*(X(E)-X(D)));\nsegment(A,B); segment(A,C);\nsegment(D,E); segment(D,F);\nangle(B,A,C) <<name:'90°',selection:'minor'>>;\nangle(E,D,F) <<name:'90°',selection:'minor'>>;\ntext(-9,-5,'Both right angles are equal, even after rotation.') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Postulate 4: All right angles are equal') <<display:'internal',fontSize:18>>;\n"
+  },
+  {
+    "key": "euclid-postulate-05",
+    "name": "Euclid · Postulate 5 · The parallel postulate",
+    "bbox": [
+      -10,
+      7,
+      10,
+      -7
+    ],
+    "source": "// Euclid Book I — Postulate 5: The parallel postulate\n// If a transversal makes same-side interior angles sum to less than two right angles, the two lines meet on that side.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.29; then I.30–48 through parallel-line results.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-4, 3);\nB = point(0, 2);\nC = point(-4, -3);\nD = point(0, -2);\na=line(A,B); b=line(C,D);\nsegment(B,D) <<strokeColor:'#b45b27',strokeWidth:3>>;\nR=point(map () -> 2*X(B)-X(A),map () -> 2*Y(B)-Y(A)) <<visible:false>>;\nS=point(map () -> 2*X(D)-X(C),map () -> 2*Y(D)-Y(C)) <<visible:false>>;\nE=intersection(a,b,0) <<name:'E'>>;\nangle(R,B,D) <<name:'α',selection:'minor'>>;\nangle(B,D,S) <<name:'β',selection:'minor'>>;\ntext(-9,-4.5,map () -> 'α + β = '+round(10*(min(deg(R,B,D),360-deg(R,B,D))+min(deg(B,D,S),360-deg(B,D,S))))/10+'°') <<display:'internal',fontSize:16>>;\ntext(-9,-5.5,'Here α + β < 180°: the lines meet on the right.') <<display:'internal',fontSize:16>>;\n// Keep the marked rays on the right of transversal BD when exploring this case.\n// At a 180-degree sum the lines are parallel and E has no finite position.\ntext(-9,6,'Postulate 5: The parallel postulate') <<display:'internal',fontSize:18>>;\n"
+  },
+  {
+    "key": "euclid-common-notion-01",
+    "name": "Euclid · Common notion 1 · Equality to the same thing",
+    "bbox": [
+      -10,
+      7,
+      10,
+      -7
+    ],
+    "source": "// Euclid Book I — Common notion 1: Equality to the same thing\n// Magnitudes equal to the same magnitude are equal to one another.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.1: AC=AB and BC=AB imply AC=BC.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-4, 3);\nB = point(1, 3);\nC=point(-4,0) <<fixed:true>>;\nD=point(map () -> -4+dist(A,B),0);\nE=point(-4,-3) <<fixed:true>>;\nF=point(map () -> -4+dist(A,B),-3);\nsegment(A,B) <<strokeWidth:3>>;\nsegment(C,D) <<strokeWidth:3,strokeColor:'#b45b27'>>;\nsegment(E,F) <<strokeWidth:3,strokeColor:'#29917a'>>;\ntext(3,3,'c'); text(3,0,'a = c'); text(3,-3,'b = c');\ntext(-9,-5.5,'Both equal c; therefore a = b.') <<display:'internal',fontSize:16>>;\n// AB represents c, CD represents a, EF represents b.\ntext(-9,6,'Common notion 1: Equality to the same thing') <<display:'internal',fontSize:18>>;\n"
+  },
+  {
+    "key": "euclid-common-notion-02",
+    "name": "Euclid · Common notion 2 · Add equals to equals",
+    "bbox": [
+      -10,
+      7,
+      10,
+      -7
+    ],
+    "source": "// Euclid Book I — Common notion 2: Add equals to equals\n// Adding equal magnitudes to equal magnitudes gives equal totals.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.2, I.13, I.32.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-6, 3);\nB = point(-2, 3);\nC = point(1, 3);\nsegment(A,B) <<strokeWidth:4>>;\nsegment(B,C) <<strokeWidth:4,strokeColor:'#b45b27'>>;\nD=point(-6,-1) <<fixed:true>>;\nE=point(map () -> -6+dist(A,B),-1);\nF=point(map () -> -6+dist(A,B)+dist(B,C),-1);\nG=point(-6,-3) <<fixed:true>>;\nH=point(map () -> -6+dist(A,B),-3);\nK=point(map () -> -6+dist(A,B)+dist(B,C),-3);\nsegment(D,E) <<strokeWidth:4>>; segment(E,F) <<strokeWidth:4,strokeColor:'#b45b27'>>;\nsegment(G,H) <<strokeWidth:4>>; segment(H,K) <<strokeWidth:4,strokeColor:'#b45b27'>>;\ntext(3,-1,'a + b'); text(3,-3,'a + b');\ntext(-9,-5.5,'Equal blue parts + equal orange parts = equal totals.') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Common notion 2: Add equals to equals') <<display:'internal',fontSize:18>>;\n"
+  },
+  {
+    "key": "euclid-common-notion-03",
+    "name": "Euclid · Common notion 3 · Subtract equals from equals",
+    "bbox": [
+      -10,
+      7,
+      10,
+      -7
+    ],
+    "source": "// Euclid Book I — Common notion 3: Subtract equals from equals\n// Subtracting equal magnitudes from equal magnitudes leaves equal remainders.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.2, I.5, I.15, I.35, I.43.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-6, 3);\nB = point(-2, 3);\nC = point(1, 3);\nsegment(A,B) <<strokeWidth:4>>; segment(B,C) <<strokeWidth:4,strokeColor:'#b45b27'>>;\nD=point(-6,-1) <<fixed:true>>;\nE=point(map () -> -6+dist(A,B),-1);\nF=point(map () -> -6+dist(A,B)+dist(B,C),-1);\nG=point(-6,-3) <<fixed:true>>;\nH=point(map () -> -6+dist(A,B),-3);\nK=point(map () -> -6+dist(A,B)+dist(B,C),-3);\nsegment(D,E) <<strokeColor:'#aaa',dash:2>>; segment(E,F) <<strokeWidth:4,strokeColor:'#b45b27'>>;\nsegment(G,H) <<strokeColor:'#aaa',dash:2>>; segment(H,K) <<strokeWidth:4,strokeColor:'#b45b27'>>;\ntext(-9,-5.5,'Remove equal dashed parts: the orange remainders are equal.') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Common notion 3: Subtract equals from equals') <<display:'internal',fontSize:18>>;\n"
+  },
+  {
+    "key": "euclid-common-notion-04",
+    "name": "Euclid · Common notion 4 · Coincidence gives equality",
+    "bbox": [
+      -10,
+      7,
+      10,
+      -7
+    ],
+    "source": "// Euclid Book I — Common notion 4: Coincidence gives equality\n// Magnitudes that coincide under superposition are equal.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.4 superposition argument.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-6, -1);\nB = point(-3, -1);\nC = point(-5, 2);\nt=slider([-6,-4],[3,-4],[0,0,1]) <<name:'Superposition'>>;\nD=point(map () -> X(A)+7*(1-t.Value()),map () -> Y(A));\nE=point(map () -> X(B)+7*(1-t.Value()),map () -> Y(B));\nF=point(map () -> X(C)+7*(1-t.Value()),map () -> Y(C));\npolygon(A,B,C) <<fillColor:'#548abd',fillOpacity:0.3>>;\npolygon(D,E,F) <<fillColor:'#cf9945',fillOpacity:0.3>>;\ntext(-9,-5.5,'Move Superposition to 1: corresponding parts coincide.') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Common notion 4: Coincidence gives equality') <<display:'internal',fontSize:18>>;\n"
+  },
+  {
+    "key": "euclid-common-notion-05",
+    "name": "Euclid · Common notion 5 · The whole exceeds a part",
+    "bbox": [
+      -10,
+      7,
+      10,
+      -7
+    ],
+    "source": "// Euclid Book I — Common notion 5: The whole exceeds a part\n// A whole magnitude is greater than a proper part of it.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.6, I.7, I.16, I.39–40.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-5, 0);\nB = point(5, 0);\nC=point(map () -> X(A)+0.6*(X(B)-X(A)),map () -> Y(A)+0.6*(Y(B)-Y(A)));\nsegment(A,B) <<strokeWidth:8,strokeColor:'#ddd'>>;\nsegment(A,C) <<strokeWidth:4,strokeColor:'#245ea6'>>;\nsegment(C,B) <<strokeWidth:4,strokeColor:'#b45b27'>>;\ntext(-9,-4,'AB = AC + CB, with CB > 0; hence AB > AC.') <<display:'internal',fontSize:16>>;\ntext(-9,-5.5,'AC is a proper part of AB. Keep A and B distinct.') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Common notion 5: The whole exceeds a part') <<display:'internal',fontSize:18>>;\n"
+  },
   {
     "key": "euclid-i-01",
     "name": "Euclid I.1 · Construct an equilateral triangle",
@@ -845,11 +955,25 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
 
     function refreshPageControls() {
       pageSelect.replaceChildren();
+      const groups = new Map();
+      for (const label of ['My pages', 'Examples', 'Euclid · Postulates', 'Euclid · Common notions', 'Euclid · Book I']) {
+        const group = document.createElement('optgroup');
+        group.label = label;
+        groups.set(label, group);
+      }
       for (const page of state.pages) {
+        const key = page.builtinKey || '';
+        const label = key.startsWith('euclid-postulate-') ? 'Euclid · Postulates'
+          : key.startsWith('euclid-common-notion-') ? 'Euclid · Common notions'
+          : key.startsWith('euclid-i-') ? 'Euclid · Book I'
+          : key ? 'Examples' : 'My pages';
         const option = document.createElement('option');
         option.value = page.id;
         option.textContent = page.name;
-        pageSelect.appendChild(option);
+        groups.get(label).appendChild(option);
+      }
+      for (const group of groups.values()) {
+        if (group.children.length) pageSelect.appendChild(group);
       }
       pageSelect.value = state.currentPageId;
       pageName.value = currentPage()?.name || '';

@@ -1,0 +1,19 @@
+// Euclid Book I — Common notion 1: Equality to the same thing
+// Magnitudes equal to the same magnitude are equal to one another.
+// Illustrative model of an assumption, not a proof.
+// Used in: I.1: AC=AB and BC=AB imply AC=BC.
+$board.setBoundingBox([-10, 7, 10, -7], true);
+
+A = point(-4, 3);
+B = point(1, 3);
+C=point(-4,0) <<fixed:true>>;
+D=point(map () -> -4+dist(A,B),0);
+E=point(-4,-3) <<fixed:true>>;
+F=point(map () -> -4+dist(A,B),-3);
+segment(A,B) <<strokeWidth:3>>;
+segment(C,D) <<strokeWidth:3,strokeColor:'#b45b27'>>;
+segment(E,F) <<strokeWidth:3,strokeColor:'#29917a'>>;
+text(3,3,'c'); text(3,0,'a = c'); text(3,-3,'b = c');
+text(-9,-5.5,'Both equal c; therefore a = b.') <<display:'internal',fontSize:16>>;
+// AB represents c, CD represents a, EF represents b.
+text(-9,6,'Common notion 1: Equality to the same thing') <<display:'internal',fontSize:18>>;
