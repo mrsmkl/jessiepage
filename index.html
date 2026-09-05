@@ -10,87 +10,63 @@
     :root {
       color-scheme: light dark;
       --panel: light-dark(#f6f7f9, #18191d);
-      --panel-2: light-dark(#ffffff, #111216);
+      --panel2: light-dark(#fff, #111216);
       --border: light-dark(#d9dce2, #30333a);
       --muted: light-dark(#6c717c, #9da3af);
       --text: light-dark(#17191e, #eceef2);
       --accent: light-dark(#2563eb, #7da3ff);
       --error: light-dark(#c52a1d, #ff8a80);
-      --error-bg: light-dark(rgb(197 42 29 / .10), rgb(255 138 128 / .13));
+      --errorbg: light-dark(rgb(197 42 29 / .10), rgb(255 138 128 / .13));
       --editor-width: 40vw;
       --editor-height: 46vh;
     }
-
     * { box-sizing: border-box; }
-    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--panel-2); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    main { width: 100vw; height: 100dvh; display: grid; grid-template-columns: minmax(0, var(--editor-width)) 7px minmax(0, 1fr); background: var(--panel-2); }
-
-    .editor-pane { min-width: 0; min-height: 0; overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; background: var(--panel); }
-    .topline { height: 43px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border-bottom: 1px solid var(--border); user-select: none; overflow: hidden; }
-    .brand { flex: 0 0 auto; font-size: 13px; font-weight: 680; letter-spacing: .01em; margin-right: 2px; }
-
-    #page-select, #page-name {
-      height: 28px;
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      background: var(--panel-2);
-      color: var(--text);
-      font: 12px system-ui, sans-serif;
-      outline: none;
-    }
-    #page-select { width: 86px; min-width: 70px; padding: 0 22px 0 7px; }
-    #page-name { width: 124px; min-width: 70px; padding: 0 8px; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--panel2); color: var(--text); font-family: Inter, system-ui, sans-serif; }
+    main { width: 100vw; height: 100dvh; display: grid; grid-template-columns: minmax(0, var(--editor-width)) 7px minmax(0, 1fr); }
+    .editor-pane { min-width: 0; min-height: 0; overflow: hidden; display: grid; grid-template-rows: auto minmax(0,1fr) auto auto; background: var(--panel); }
+    .topline { height: 43px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border-bottom: 1px solid var(--border); overflow: hidden; user-select: none; }
+    .brand { flex: 0 0 auto; font-size: 13px; font-weight: 680; }
+    #page-select, #page-name { height: 28px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel2); color: var(--text); font: 12px system-ui, sans-serif; outline: none; }
+    #page-select { width: 92px; min-width: 70px; padding: 0 22px 0 7px; }
+    #page-name { width: 130px; min-width: 70px; padding: 0 8px; }
     #page-select:focus, #page-name:focus { border-color: var(--accent); }
-
-    .icon-button { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 7px; background: transparent; color: var(--muted); font: 18px/1 system-ui, sans-serif; cursor: pointer; }
-    .icon-button:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+    .icon-button { width: 28px; height: 28px; flex: 0 0 auto; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 7px; background: transparent; color: var(--muted); font: 18px/1 system-ui, sans-serif; cursor: pointer; }
     .fullscreen-button { display: none; }
-    .docs-link { flex: 0 0 auto; color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 600; white-space: nowrap; }
-    .docs-link:hover { color: var(--accent); text-decoration: underline; }
-
-    #status { margin-left: auto; max-width: 35%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    #status.ok { color: var(--muted); }
+    .top-link { flex: 0 0 auto; color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .top-link:hover { color: var(--accent); text-decoration: underline; }
+    #status { margin-left: auto; max-width: 32%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 11px ui-monospace, monospace; }
     #status.pending { color: var(--accent); }
     #status.error { color: var(--error); }
-
     .editor-wrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
-    #error-line-marker { position: absolute; z-index: 0; left: 0; right: 0; height: 22px; display: none; background: var(--error-bg); border-left: 3px solid var(--error); pointer-events: none; }
-    textarea { position: relative; z-index: 1; min-width: 0; min-height: 0; width: 100%; height: 100%; resize: none; border: 0; outline: 0; padding: 16px 17px 24px; background: transparent; color: var(--text); caret-color: var(--accent); font: 14px/1.58 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; tab-size: 2; }
-    textarea::selection { background: color-mix(in srgb, var(--accent) 25%, transparent); }
-
+    #error-line-marker { position: absolute; z-index: 0; left: 0; right: 0; display: none; background: var(--errorbg); border-left: 3px solid var(--error); pointer-events: none; }
+    textarea { position: relative; z-index: 1; width: 100%; height: 100%; min-width: 0; min-height: 0; resize: none; border: 0; outline: 0; padding: 16px 17px 24px; background: transparent; color: var(--text); caret-color: var(--accent); font: 14px/1.58 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; }
     .hint { min-height: 30px; padding: 7px 13px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; line-height: 1.35; user-select: none; }
-    .hint.error { color: var(--error); border-top-color: color-mix(in srgb, var(--error) 35%, var(--border)); background: var(--error-bg); }
-
-    .point-readback { max-height: 128px; overflow: auto; padding: 8px 13px 10px; border-top: 1px solid var(--border); background: color-mix(in srgb, var(--panel-2) 45%, transparent); }
-    .point-readback .label { margin-bottom: 5px; color: var(--muted); font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; user-select: none; }
-    #points { margin: 0; color: var(--muted); font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; }
-
+    .hint.error { color: var(--error); background: var(--errorbg); }
+    .point-readback { max-height: 128px; overflow: auto; padding: 8px 13px 10px; border-top: 1px solid var(--border); background: color-mix(in srgb, var(--panel2) 45%, transparent); }
+    .point-readback .label { margin-bottom: 5px; color: var(--muted); font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
+    #points { margin: 0; color: var(--muted); font: 11px/1.5 ui-monospace, monospace; white-space: pre-wrap; }
     .splitter { position: relative; z-index: 5; cursor: col-resize; background: var(--border); touch-action: none; }
     .splitter::after { content: ""; position: absolute; inset: 0 -5px; }
     .splitter:hover, .splitter.dragging { background: var(--accent); }
-
-    .board-pane { position: relative; min-width: 0; min-height: 0; padding: 12px; background: var(--panel-2); }
-    #board { width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / .06), rgb(0 0 0 / .3)); cursor: grab; touch-action: none; overscroll-behavior: contain; }
+    .board-pane { position: relative; min-width: 0; min-height: 0; padding: 12px; background: var(--panel2); }
+    .board-pane:fullscreen, .board-pane:-webkit-full-screen { width: 100%; height: 100%; padding: 8px; }
+    #board { width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff; cursor: grab; touch-action: none; overscroll-behavior: contain; }
     #board:active { cursor: grabbing; }
-
     .canvas-tools { position: absolute; right: 20px; bottom: 20px; z-index: 20; display: flex; gap: 7px; }
     .canvas-tool { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid rgb(0 0 0 / .16); border-radius: 10px; background: rgb(255 255 255 / .94); color: #222; box-shadow: 0 1px 4px rgb(0 0 0 / .14); font: 600 22px/1 system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
-    .canvas-tool:active { transform: translateY(1px); }
-    .canvas-tool.reset { width: 60px; font-size: 13px; letter-spacing: -.02em; }
+    .canvas-tool.reset { width: 60px; font-size: 13px; }
     .canvas-tool.fullscreen { font-size: 21px; }
-
     #validator { position: fixed; left: -10000px; top: -10000px; width: 400px; height: 400px; opacity: 0; pointer-events: none; }
-
     @media (max-width: 760px) {
-      main { grid-template-columns: 1fr; grid-template-rows: minmax(43px, var(--editor-height)) 7px minmax(0, 1fr); }
-      .editor-pane { grid-template-rows: auto minmax(0, 1fr) auto; }
+      main { grid-template-columns: 1fr; grid-template-rows: minmax(43px, var(--editor-height)) 7px minmax(0,1fr); }
+      .editor-pane { grid-template-rows: auto minmax(0,1fr) auto; }
       .brand { display: none; }
-      #page-select { width: 68px; min-width: 62px; }
-      #page-name { flex: 1 1 auto; width: auto; min-width: 62px; }
-      #status.ok, #status.pending { display: none; }
+      #page-select { width: 70px; min-width: 62px; }
+      #page-name { flex: 1 1 auto; width: auto; min-width: 58px; }
+      #status:not(.error) { display: none; }
       #status.error { margin-left: 0; max-width: 46px; }
-      .fullscreen-button { display: grid; flex: 0 0 auto; }
-      .docs-link { font-size: 10px; }
+      .fullscreen-button { display: grid; }
+      .top-link { font-size: 10px; }
       .hint:not(.error), .point-readback { display: none; }
       .splitter { cursor: row-resize; }
       .splitter::after { inset: -5px 0; }
@@ -112,29 +88,25 @@
         <input id="page-name" type="text" maxlength="60" aria-label="Page name" title="Edit page name" />
         <button id="add-page" class="icon-button" title="New page" aria-label="New page">+</button>
         <button id="fullscreen-button" class="icon-button fullscreen-button" title="Enter fullscreen" aria-label="Enter fullscreen">⛶</button>
-        <a id="program-link" class="docs-link" href="#" target="_blank" rel="noopener noreferrer" title="Open this program as a new graph">Link ↗</a>
-        <a class="docs-link" href="https://jsxgraph.org/docs/symbols/JXG.JessieCode.html" target="_blank" rel="noopener noreferrer" title="Official JessieCode reference">Jessie ↗</a>
+        <a id="program-link" class="top-link" href="#" target="_blank" rel="noopener noreferrer" title="Open this program as a new graph">Link ↗</a>
+        <a class="top-link" href="https://jsxgraph.org/docs/symbols/JXG.JessieCode.html" target="_blank" rel="noopener noreferrer">Jessie ↗</a>
         <div id="status">loading…</div>
       </div>
-
       <div class="editor-wrap">
         <div id="error-line-marker" aria-hidden="true"></div>
         <textarea id="editor" spellcheck="false" aria-label="JessieCode editor"></textarea>
       </div>
-
       <div id="hint" class="hint">Autosaved locally · drag canvas to pan · use board controls or wheel/pinch to zoom · drag simple points to edit source</div>
       <div class="point-readback"><div class="label">Points</div><pre id="points">—</pre></div>
     </section>
-
     <div id="splitter" class="splitter" role="separator" aria-label="Resize editor and canvas"></div>
-
     <section class="board-pane" id="board-pane">
       <div id="board" class="jxgbox"></div>
       <div class="canvas-tools" aria-label="Canvas controls">
         <button id="canvas-zoom-in" class="canvas-tool" title="Zoom in" aria-label="Zoom in">+</button>
         <button id="canvas-zoom-out" class="canvas-tool" title="Zoom out" aria-label="Zoom out">−</button>
         <button id="canvas-reset" class="canvas-tool reset" title="Reset view" aria-label="Reset view">100%</button>
-        <button id="canvas-fullscreen" class="canvas-tool fullscreen" title="Fullscreen" aria-label="Fullscreen">⛶</button>
+        <button id="canvas-fullscreen" class="canvas-tool fullscreen" title="Canvas fullscreen" aria-label="Canvas fullscreen">⛶</button>
       </div>
     </section>
   </main>
@@ -162,6 +134,117 @@
     const STORAGE_KEY = 'jessiepage-state-v1';
     const DEFAULT_BBOX = [-6, 6, 6, -6];
     const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
+    const BUILTIN_EXAMPLES_VERSION = 1;
+    const BUILTIN_EXAMPLES = [
+      {
+        key: 'basics',
+        name: 'Example · Basics',
+        bbox: [-6, 6, 6, -6],
+        source: `// Free points, lines, polygon, midpoint and circle.
+// Drag A, B and C.
+A = point(-3, -1);
+B = point(3, -1);
+C = point(0, 3);
+
+AB = segment(A, B);
+BC = line(B, C) << dash: 2 >>;
+tri = polygon(A, B, C) <<
+  fillColor: '#dbeafe',
+  fillOpacity: 0.35
+>>;
+M = midpoint(A, B);
+c = circle(M, C) << strokeColor: '#7c3aed' >>;`
+      },
+      {
+        key: 'intersections',
+        name: 'Example · Intersections',
+        bbox: [-6, 6, 6, -6],
+        source: `// Two circles and their two intersection points.
+A = point(-2, 0);
+B = point(2, 0);
+c1 = circle(A, 3) << fillOpacity: 0.06 >>;
+c2 = circle(B, 3) << fillOpacity: 0.06 >>;
+P = intersection(c1, c2, 0);
+Q = intersection(c1, c2, 1);
+segment(A, B);
+segment(P, Q) << dash: 2 >>;`
+      },
+      {
+        key: 'euler',
+        name: 'Example · Euler line',
+        bbox: [-6, 6, 6, -6],
+        source: `// Triangle centers: orthocenter, centroid, circumcircle and Euler line.
+A = point(-3, -2);
+B = point(3, -2);
+C = point(1, 3);
+tri = polygon(A, B, C) << fillOpacity: 0.12 >>;
+
+hA = perpendicular(tri.borders[1], A);
+hB = perpendicular(tri.borders[2], B);
+H = intersection(hA, hB, 0) << name: 'H' >>;
+
+mAB = midpoint(A, B);
+mBC = midpoint(B, C);
+mCA = midpoint(C, A);
+medA = segment(A, mBC);
+medB = segment(B, mCA);
+G = intersection(medA, medB, 0) << name: 'G' >>;
+
+cc = circumcircle(A, B, C) <<
+  dash: 3,
+  center: << name: 'O', withlabel: true, visible: true >>
+>>;
+euler = line(H, G) << strokeWidth: 3, dash: 1 >>;`
+      },
+      {
+        key: 'glider',
+        name: 'Example · Glider + tangent',
+        bbox: [-6, 6, 6, -6],
+        source: `// P is constrained to the circle. Drag P around it.
+O = point(0, 0);
+R = point(3, 0);
+c = circle(O, R);
+P = glider(0, 3, c);
+t = tangent(P);
+segment(O, P) << dash: 2 >>;`
+      },
+      {
+        key: 'functions',
+        name: 'Example · Function plots',
+        bbox: [-6, 6, 6, -6],
+        source: `// Function terms use JessieCode math syntax directly.
+f = functiongraph('sin(x)') << strokeWidth: 3 >>;
+g = functiongraph('0.25*x^2 - 2') << strokeColor: '#d97706' >>;
+h = functiongraph('2*cos(x/2)') << strokeColor: '#7c3aed', dash: 2 >>;`
+      },
+      {
+        key: 'slider',
+        name: 'Example · Slider + function',
+        bbox: [-6, 6, 6, -6],
+        source: `// A slider controls the amplitude of a sine wave.
+a = slider([-4, -4], [2, -4], [-2, 1, 2]) << name: 'a' >>;
+f = functiongraph(map (x) -> V(a) * sin(x)) << strokeWidth: 3 >>;`
+      },
+      {
+        key: 'cardioid',
+        name: 'Example · Parametric cardioid',
+        bbox: [-6, 6, 6, -6],
+        source: `// Parametric curves use JessieCode maps.
+fx = map (t) -> 2 * (1 - cos(t)) * cos(t);
+fy = map (t) -> 2 * (1 - cos(t)) * sin(t);
+c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;`
+      },
+      {
+        key: 'loop',
+        name: 'Example · Programming',
+        bbox: [-6, 6, 6, -6],
+        source: `// JessieCode is a small programming language, not only expressions.
+for (i = 0; i < 9; i = i + 1) {
+  point(i - 4, 2 * sin(i)) << name: '', withLabel: false >>;
+}`
+      }
+    ];
+
     let board;
     let renderTimer;
     let errorLine = null;
@@ -185,8 +268,41 @@
       status.title = title;
     }
 
-    function newId() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
-    function currentPage() { return state.pages.find((page) => page.id === state.currentPageId) || state.pages[0] || null; }
+    function newId() {
+      return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function currentPage() {
+      return state.pages.find((p) => p.id === state.currentPageId) || state.pages[0] || null;
+    }
+
+    function makePage(name, source) {
+      return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice() };
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (err) {
+        console.warn(err);
+        setStatus('error', 'local save failed');
+      }
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.pages) || !parsed.pages.length) return false;
+        state = parsed;
+        if (!state.pages.some((p) => p.id === state.currentPageId)) state.currentPageId = state.pages[0].id;
+        return true;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
 
     function updateProgramLink() {
       const params = new URLSearchParams();
@@ -200,29 +316,11 @@
       if (!location.hash || location.hash.length < 2) return null;
       const params = new URLSearchParams(location.hash.slice(1));
       if (params.get('new') !== '1' || !params.has('code')) return null;
-      const name = (params.get('name') || 'Linked graph').slice(0, 60);
-      return makePage(name, params.get('code') || '');
+      return makePage((params.get('name') || 'Linked graph').slice(0, 60), params.get('code') || '');
     }
 
     function consumeLinkedPageHash() {
       history.replaceState(null, '', `${location.pathname}${location.search}`);
-    }
-
-    function saveState() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-      catch (err) { console.warn(err); setStatus('error', 'local save failed'); }
-    }
-
-    function loadState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return false;
-        const parsed = JSON.parse(raw);
-        if (!parsed || !Array.isArray(parsed.pages) || !parsed.pages.length) return false;
-        state = parsed;
-        if (!state.pages.some((page) => page.id === state.currentPageId)) state.currentPageId = state.pages[0].id;
-        return true;
-      } catch (err) { console.warn(err); return false; }
     }
 
     function refreshPageControls() {
@@ -240,12 +338,11 @@
 
     function nextPageName() {
       let n = 1;
-      const used = new Set(state.pages.map((page) => page.name));
+      const used = new Set(state.pages.map((p) => p.name));
       while (used.has(`Page ${n}`)) n += 1;
       return `Page ${n}`;
     }
 
-    function makePage(name, source) { return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice() }; }
     function rememberSource(source) {
       const page = currentPage();
       if (!page) return;
@@ -253,11 +350,56 @@
       saveState();
       updateProgramLink();
     }
+
     function rememberView() {
       const page = currentPage();
       if (!page || !board) return;
       const bbox = board.getBoundingBox();
-      if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) { page.bbox = bbox.slice(); saveState(); }
+      if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) {
+        page.bbox = bbox.slice();
+        saveState();
+      }
+    }
+
+    function validate(code) {
+      let testBoard;
+      try {
+        testBoard = JXG.JSXGraph.initBoard('validator', {
+          ...boardOptions,
+          axis: false,
+          pan: { enabled: false },
+          zoom: { enabled: false },
+          resize: { enabled: false }
+        });
+        testBoard.jc.parse(code);
+        testBoard.update();
+      } finally {
+        if (testBoard) JXG.JSXGraph.freeBoard(testBoard);
+      }
+    }
+
+    function installBuiltinExamples(selectBasics = false) {
+      if ((state.builtinExamplesVersion || 0) >= BUILTIN_EXAMPLES_VERSION) return;
+      const existing = new Set(state.pages.map((p) => p.builtinKey).filter(Boolean));
+      let basicsId = null;
+
+      for (const example of BUILTIN_EXAMPLES) {
+        if (existing.has(example.key)) continue;
+        try {
+          validate(example.source);
+          const page = makePage(example.name, example.source);
+          page.builtinKey = example.key;
+          page.bbox = example.bbox.slice();
+          state.pages.push(page);
+          if (example.key === 'basics') basicsId = page.id;
+        } catch (err) {
+          console.warn(`Skipping invalid built-in example ${example.key}`, err);
+        }
+      }
+
+      state.builtinExamplesVersion = BUILTIN_EXAMPLES_VERSION;
+      if (selectBasics && basicsId) state.currentPageId = basicsId;
+      saveState();
     }
 
     function parseErrorLine(message) {
@@ -266,7 +408,10 @@
     }
 
     function positionErrorMarker() {
-      if (!errorLine) { errorMarker.style.display = 'none'; return; }
+      if (!errorLine) {
+        errorMarker.style.display = 'none';
+        return;
+      }
       const style = getComputedStyle(editor);
       const lineHeight = Number.parseFloat(style.lineHeight) || 22;
       const paddingTop = Number.parseFloat(style.paddingTop) || 0;
@@ -292,23 +437,14 @@
       setStatus('error', errorLine ? `line ${errorLine}` : 'error', message);
     }
 
-    function validate(code) {
-      let testBoard;
-      try {
-        testBoard = JXG.JSXGraph.initBoard('validator', {
-          ...boardOptions,
-          axis: false,
-          pan: { enabled: false },
-          zoom: { enabled: false },
-          resize: { enabled: false }
-        });
-        testBoard.jc.parse(code);
-        testBoard.update();
-      } finally { if (testBoard) JXG.JSXGraph.freeBoard(testBoard); }
+    function formatNumber(value) {
+      const clean = Math.abs(value) < 1e-12 ? 0 : value;
+      return Number(clean.toFixed(6)).toString();
     }
 
-    function formatNumber(value) { const clean = Math.abs(value) < 1e-12 ? 0 : value; return Number(clean.toFixed(6)).toString(); }
-    function escapeRegex(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function escapeRegex(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
 
     function simplePointNames(code) {
       const names = new Set();
@@ -328,10 +464,10 @@
         const match = lines[i].match(assignment);
         if (!match) continue;
         lines[i] = match[1] + formatNumber(x) + match[3] + formatNumber(y) + match[5];
-        const selectionStart = editor.selectionStart;
-        const selectionEnd = editor.selectionEnd;
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
         editor.value = lines.join('\n');
-        editor.setSelectionRange(selectionStart, selectionEnd);
+        editor.setSelectionRange(start, end);
         rememberSource(editor.value);
         return true;
       }
@@ -351,11 +487,17 @@
     }
 
     function bindSimplePointSourceSync(code) {
-      const writableNames = simplePointNames(code);
+      const writable = simplePointNames(code);
       for (const point of namedPoints()) {
-        if (!writableNames.has(point.name)) continue;
-        point.on('drag', () => { syncSimplePointToSource(point.name, point.X(), point.Y()); updatePointReadback(); });
-        point.on('up', () => { syncSimplePointToSource(point.name, point.X(), point.Y()); updatePointReadback(); });
+        if (!writable.has(point.name)) continue;
+        point.on('drag', () => {
+          syncSimplePointToSource(point.name, point.X(), point.Y());
+          updatePointReadback();
+        });
+        point.on('up', () => {
+          syncSimplePointToSource(point.name, point.X(), point.Y());
+          updatePointReadback();
+        });
       }
     }
 
@@ -375,7 +517,11 @@
         validate(code);
         makeBoard(code, bbox);
         const page = currentPage();
-        if (page) { page.lastGoodSource = code; page.source = code; saveState(); }
+        if (page) {
+          page.lastGoodSource = code;
+          page.source = code;
+          saveState();
+        }
         clearError();
         updateProgramLink();
         setStatus('ok', 'saved');
@@ -392,7 +538,7 @@
       clearTimeout(renderTimer);
       rememberSource(editor.value);
       setStatus('pending', 'checking…');
-      renderTimer = setTimeout(() => { const page = currentPage(); render(editor.value, page?.bbox); }, 180);
+      renderTimer = setTimeout(() => render(editor.value, currentPage()?.bbox), 180);
     }
 
     function showCurrentPage() {
@@ -407,17 +553,22 @@
     }
 
     async function initialize() {
-      if (!loadState()) {
+      const hadState = loadState();
+      if (!hadState) {
         let source = '// New construction\nA = point(-2, 0);\nB = point(2, 0);\nline(A, B);\n';
         try {
           const response = await fetch('./construction.jessie', { cache: 'no-store' });
           if (response.ok) source = await response.text();
-        } catch (err) { console.warn(err); }
+        } catch (err) {
+          console.warn(err);
+        }
         const page = makePage('Page 1', source);
         state.pages = [page];
         state.currentPageId = page.id;
         saveState();
       }
+
+      installBuiltinExamples(!hadState);
 
       const linkedPage = linkedPageFromHash();
       if (linkedPage) {
@@ -434,22 +585,18 @@
     function setSplitFromPointer(event) {
       const rect = layout.getBoundingClientRect();
       if (window.matchMedia('(max-width: 760px)').matches) {
-        const minEditor = 43;
-        const minCanvas = 0;
-        const height = Math.max(minEditor, Math.min(rect.height - minCanvas, event.clientY - rect.top));
+        const height = Math.max(43, Math.min(rect.height, event.clientY - rect.top));
         document.documentElement.style.setProperty('--editor-height', `${height}px`);
         localStorage.setItem('jessiepage-editor-height', String(height));
       } else {
-        const minEditor = 0;
-        const minCanvas = 0;
-        const width = Math.max(minEditor, Math.min(rect.width - minCanvas, event.clientX - rect.left));
+        const width = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
         document.documentElement.style.setProperty('--editor-width', `${width}px`);
         localStorage.setItem('jessiepage-editor-width', String(width));
       }
       if (board) board.updateContainerDims();
     }
 
-    async function toggleFullscreen(target = document.documentElement) {
+    async function toggleFullscreen(target) {
       try {
         const active = document.fullscreenElement || document.webkitFullscreenElement || null;
         if (active === target) {
@@ -465,19 +612,14 @@
       }
     }
 
-    function updateFullscreenButton() {
+    function updateFullscreenButtons() {
       const active = document.fullscreenElement || document.webkitFullscreenElement || null;
-      const pageIsFullscreen = active === document.documentElement;
-      const canvasIsFullscreen = active === boardPane;
-
-      fullscreenButton.textContent = pageIsFullscreen ? '×' : '⛶';
-      fullscreenButton.title = pageIsFullscreen ? 'Exit fullscreen' : 'Enter fullscreen';
-      fullscreenButton.setAttribute('aria-label', fullscreenButton.title);
-
-      canvasFullscreen.textContent = canvasIsFullscreen ? '×' : '⛶';
-      canvasFullscreen.title = canvasIsFullscreen ? 'Exit canvas fullscreen' : 'Canvas fullscreen';
-      canvasFullscreen.setAttribute('aria-label', canvasFullscreen.title);
-
+      const pageFull = active === document.documentElement;
+      const canvasFull = active === boardPane;
+      fullscreenButton.textContent = pageFull ? '×' : '⛶';
+      fullscreenButton.title = pageFull ? 'Exit fullscreen' : 'Enter fullscreen';
+      canvasFullscreen.textContent = canvasFull ? '×' : '⛶';
+      canvasFullscreen.title = canvasFull ? 'Exit canvas fullscreen' : 'Canvas fullscreen';
       setTimeout(() => { if (board) board.updateContainerDims(); }, 50);
     }
 
@@ -485,7 +627,7 @@
       event.preventDefault();
       splitter.classList.add('dragging');
       splitter.setPointerCapture(event.pointerId);
-      const move = (moveEvent) => setSplitFromPointer(moveEvent);
+      const move = (e) => setSplitFromPointer(e);
       const stop = () => {
         splitter.classList.remove('dragging');
         splitter.removeEventListener('pointermove', move);
@@ -546,10 +688,8 @@
       board.fullUpdate();
       rememberView();
     });
-
-    document.addEventListener('fullscreenchange', updateFullscreenButton);
-    document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
-
+    document.addEventListener('fullscreenchange', updateFullscreenButtons);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenButtons);
     editor.addEventListener('input', scheduleRender);
     editor.addEventListener('scroll', positionErrorMarker);
 
