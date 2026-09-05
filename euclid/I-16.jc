@@ -1,41 +1,18 @@
-// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
-// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
-// Blue points are inputs. Derived points follow their parents.
-// Coordinates implement the Euclidean plane; numerical checks are not proofs.
-// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
-$board.setBoundingBox([-9, 9, 13, -9], true);
-len = function(a,b) { return sqrt((X(a)-X(b))^2+(Y(a)-Y(b))^2);
-};
-ang = function(a,b,c) { return acos(max(-1,min(1,((X(a)-X(b))*(X(c)-X(b))+(Y(a)-Y(b))*(Y(c)-Y(b)))/(len(a,b)*len(c,b)))));
-};
-pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
-};
-dp = function(f,g,n) { return point(f,g) <<name:n, size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
-};
-seg = function(a,b) { return segment(a,b) <<strokeWidth:2, strokeColor:'#34465d'>>;
-};
-tri = function(a,b,c) { return polygon(a,b,c) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;
-};
-along = function(a,b,t,n) { return dp(function(){return X(a)+t()*(X(b)-X(a));},function(){return Y(a)+t()*(Y(b)-Y(a));},n);
-};
-mark = function(a,b,c,n) { return angle(a,b,c) <<name:n, radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
-};
 // I.16: Exterior angle exceeds either remote interior angle
-// Bisect AC and extend BM to E with BM=ME. SAS transfers angle BAC inside the exterior angle. Repeat with another bisected side for the other inequality.
-pA=pt(-3,0,'A');
-pB=pt(3,0,'B');
-pC=pt(-1,4,'C');
-tri(pA,pB,pC);
-pD=along(pB,pC,function(){return 1.6;},'D');
-seg(pC,pD);
-pM=midpoint(pA,pC) <<name:'M'>>;
-pE=along(pB,pM,function(){return 2;},'E');
-seg(pB,pE);
-seg(pC,pE);
-mark(pA,pC,pD,'γ');
-mark(pC,pA,pB,'α');
-mark(pA,pB,pC,'β');
-check = function(){return ang(pA,pC,pD)>ang(pB,pA,pC) && ang(pA,pC,pD)>ang(pA,pB,pC);};
+// Drag plain point assignments to update their coordinates in the editor.
+$board.setBoundingBox([-9, 9, 13, -9], true);
 
+A = point(-3, 0);
+B = point(3, 0);
+C = point(-1, 4);
+polygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;
+D=point(map () -> X(B)+(1.6)*(X(C)-X(B)),map () -> Y(B)+(1.6)*(Y(C)-Y(B))) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
+segment(C,D) <<strokeWidth:2, strokeColor:'#34465d'>>;
+M=midpoint(A,C) <<name:'M'>>;
+E=point(map () -> X(B)+(2)*(X(M)-X(B)),map () -> Y(B)+(2)*(Y(M)-Y(B))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
+segment(B,E) <<strokeWidth:2, strokeColor:'#34465d'>>;
+segment(C,E) <<strokeWidth:2, strokeColor:'#34465d'>>;
+angle(A,C,D) <<name:'γ', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
+angle(C,A,B) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
+angle(A,B,C) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
 text(-8,8,'I.16') <<display:'internal',fontSize:20>>;
-text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;

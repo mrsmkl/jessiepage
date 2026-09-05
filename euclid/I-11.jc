@@ -1,43 +1,17 @@
-// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
-// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
-// Blue points are inputs. Derived points follow their parents.
-// Coordinates implement the Euclidean plane; numerical checks are not proofs.
-// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
-$board.setBoundingBox([-9, 9, 13, -9], true);
-near = function(a,b) { return abs(a-b) < 0.000001*(1+abs(a)+abs(b));
-};
-len = function(a,b) { return sqrt((X(a)-X(b))^2+(Y(a)-Y(b))^2);
-};
-ang = function(a,b,c) { return acos(max(-1,min(1,((X(a)-X(b))*(X(c)-X(b))+(Y(a)-Y(b))*(Y(c)-Y(b)))/(len(a,b)*len(c,b)))));
-};
-pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
-};
-dp = function(f,g,n) { return point(f,g) <<name:n, size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
-};
-seg = function(a,b) { return segment(a,b) <<strokeWidth:2, strokeColor:'#34465d'>>;
-};
-aux = function(a,b) { return line(a,b) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;
-};
-cc = function(a,b) { return circle(a,b) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;
-};
-along = function(a,b,t,n) { return dp(function(){return X(a)+t()*(X(b)-X(a));},function(){return Y(a)+t()*(Y(b)-Y(a));},n);
-};
-mark = function(a,b,c,n) { return angle(a,b,c) <<name:n, radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
-};
 // I.11: Erect a perpendicular at a point on a line
-// Choose A,D at equal distances on either side of P. Construct equilateral ADE; SAS makes the adjacent angles at P equal, hence right.
-pA=pt(-3,0,'A');
-pB=pt(3,0,'B');
-l=aux(pA,pB);
-pP=glider(0,0,l) <<name:'P', size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
-pD=along(pP,pA,function(){return -1;},'D');
-c1=cc(pA,pD);
-c2=cc(pD,pA);
-pE=intersection(c1,c2,0) <<name:'E'>>;
-seg(pA,pD);
-seg(pP,pE);
-mark(pA,pP,pE,'');
-check = function(){return near(ang(pA,pP,pE),PI/2);};
+// Drag plain point assignments to update their coordinates in the editor.
+$board.setBoundingBox([-9, 9, 13, -9], true);
 
+A = point(-3, 0);
+B = point(3, 0);
+l=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;
+P = point(0, 0);
+P.glide(l);
+D=point(map () -> X(P)+(-1)*(X(A)-X(P)),map () -> Y(P)+(-1)*(Y(A)-Y(P))) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
+c1=circle(A,D) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;
+c2=circle(D,A) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;
+E=intersection(c1,c2,0) <<name:'E'>>;
+segment(A,D) <<strokeWidth:2, strokeColor:'#34465d'>>;
+segment(P,E) <<strokeWidth:2, strokeColor:'#34465d'>>;
+angle(A,P,E) <<name:'', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
 text(-8,8,'I.11') <<display:'internal',fontSize:20>>;
-text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;

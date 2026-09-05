@@ -1,33 +1,11 @@
-// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
-// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
-// Blue points are inputs. Derived points follow their parents.
-// Coordinates implement the Euclidean plane; numerical checks are not proofs.
-// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
-$board.setBoundingBox([-9, 9, 13, -9], true);
-near = function(a,b) { return abs(a-b) < 0.000001*(1+abs(a)+abs(b));
-};
-len = function(a,b) { return sqrt((X(a)-X(b))^2+(Y(a)-Y(b))^2);
-};
-ang = function(a,b,c) { return acos(max(-1,min(1,((X(a)-X(b))*(X(c)-X(b))+(Y(a)-Y(b))*(Y(c)-Y(b)))/(len(a,b)*len(c,b)))));
-};
-pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
-};
-tri = function(a,b,c) { return polygon(a,b,c) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;
-};
-readout = function(y,label,f) { return text(-8,y,function(){return label+': '+round(f()*10000)/10000;}) <<display:'internal',fontSize:15>>;
-};
-mark = function(a,b,c,n) { return angle(a,b,c) <<name:n, radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
-};
 // I.19: Greater angle faces greater side
-// I.18: cut the longer side to the shorter; use the isosceles base angles and I.16. I.19: equal or smaller opposite sides would contradict I.5 or I.18.
-pA=pt(-3,0,'A');
-pB=pt(3,0,'B');
-pC=pt(-1,4,'C');
-tri(pA,pB,pC);
-mark(pA,pB,pC,'β');
-mark(pA,pC,pB,'γ');
-check = function(){return (len(pA,pB)-len(pA,pC))*(ang(pA,pC,pB)-ang(pA,pB,pC))>0 || near(len(pA,pB),len(pA,pC));};
-readout(-4,'AB - AC',function(){return len(pA,pB)-len(pA,pC);});
-readout(-5,'angle C - angle B',function(){return (ang(pA,pC,pB)-ang(pA,pB,pC))*180/PI;});
+// Drag plain point assignments to update their coordinates in the editor.
+$board.setBoundingBox([-9, 9, 13, -9], true);
+
+A = point(-3, 0);
+B = point(3, 0);
+C = point(-1, 4);
+polygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;
+angle(A,B,C) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
+angle(A,C,B) <<name:'γ', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
 text(-8,8,'I.19') <<display:'internal',fontSize:20>>;
-text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;

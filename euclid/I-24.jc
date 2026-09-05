@@ -1,36 +1,15 @@
-// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
-// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
-// Blue points are inputs. Derived points follow their parents.
-// Coordinates implement the Euclidean plane; numerical checks are not proofs.
-// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
-$board.setBoundingBox([-9, 9, 13, -9], true);
-len = function(a,b) { return sqrt((X(a)-X(b))^2+(Y(a)-Y(b))^2);
-};
-ang = function(a,b,c) { return acos(max(-1,min(1,((X(a)-X(b))*(X(c)-X(b))+(Y(a)-Y(b))*(Y(c)-Y(b)))/(len(a,b)*len(c,b)))));
-};
-pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
-};
-dp = function(f,g,n) { return point(f,g) <<name:n, size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
-};
-tri = function(a,b,c) { return polygon(a,b,c) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;
-};
-shift = function(a,x,y,n) { return dp(function(){return X(a)+x;},function(){return Y(a)+y;},n);
-};
-mark = function(a,b,c,n) { return angle(a,b,c) <<name:n, radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
-};
 // I.24: Larger included angle gives larger base
-// The second included angle is half the first; its two adjacent lengths match. I.24 copies the smaller angle into the larger and uses isosceles angles and triangle inequalities. I.25 excludes equal or smaller angles using I.4 and I.24.
-pA=pt(-5,0,'A');
-pB=pt(-2,0,'B');
-pC=pt(-4,3,'C');
-pD=shift(pA,7,0,'D');
-pE=shift(pB,7,0,'E');
-pF=dp(function(){return X(pD)+len(pA,pC)*cos(atan2(Y(pB)-Y(pA),X(pB)-X(pA))+ang(pB,pA,pC)/2);},function(){return Y(pD)+len(pA,pC)*sin(atan2(Y(pB)-Y(pA),X(pB)-X(pA))+ang(pB,pA,pC)/2);},'F');
-tri(pA,pB,pC);
-tri(pD,pE,pF);
-mark(pB,pA,pC,'α');
-mark(pE,pD,pF,'β');
-check = function(){return len(pB,pC)>len(pE,pF) && ang(pB,pA,pC)>ang(pE,pD,pF);};
+// Drag plain point assignments to update their coordinates in the editor.
+$board.setBoundingBox([-9, 9, 13, -9], true);
 
+A = point(-5, 0);
+B = point(-2, 0);
+C = point(-4, 3);
+D=point(map () -> X(A)+7,map () -> Y(A)+0) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
+E=point(map () -> X(B)+7,map () -> Y(B)+0) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
+F=point(map () -> X(D)+dist(A,C)*cos(atan2(Y(B)-Y(A),X(B)-X(A))+acos(max(-1,min(1,((X(B)-X(A))*(X(C)-X(A))+(Y(B)-Y(A))*(Y(C)-Y(A)))/(dist(B,A)*dist(C,A)))))/2),map () -> Y(D)+dist(A,C)*sin(atan2(Y(B)-Y(A),X(B)-X(A))+acos(max(-1,min(1,((X(B)-X(A))*(X(C)-X(A))+(Y(B)-Y(A))*(Y(C)-Y(A)))/(dist(B,A)*dist(C,A)))))/2)) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
+polygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;
+polygon(D,E,F) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;
+angle(B,A,C) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
+angle(E,D,F) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
 text(-8,8,'I.24') <<display:'internal',fontSize:20>>;
-text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;
