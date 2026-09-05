@@ -13,5 +13,5 @@ E=point(map () -> X(B)+7*(1-t.Value()),map () -> Y(B));
 F=point(map () -> X(C)+7*(1-t.Value()),map () -> Y(C));
 polygon(A,B,C) <<fillColor:'#548abd',fillOpacity:0.3>>;
 polygon(D,E,F) <<fillColor:'#cf9945',fillOpacity:0.3>>;
-text(-9,-5.5,'Move Superposition to 1: corresponding parts coincide.') <<display:'internal',fontSize:16>>;
+text(-9,-5.5,function(){return abs(1-t.Value())<0.001 ? 'The triangles coincide, so corresponding parts are equal.' : 'Move Superposition to 1. Separation = '+round(100*7*(1-t.Value()))/100;}) <<display:'internal',fontSize:16>>;
 text(-9,6,'Common notion 4: Coincidence gives equality') <<display:'internal',fontSize:18>>;

@@ -8,5 +8,5 @@ O = point(0, 0);
 A = point(3, 1);
 c=circle(O,A) <<strokeWidth:3>>;
 segment(O,A) <<dash:2>>;
-text(-9,-5,'Center O; radius OA. Move either point.') <<display:'internal',fontSize:16>>;
+text(-9,-5,map () -> 'Center O; radius OA = '+round(100*dist(O,A))/100+'. Move either point.') <<display:'internal',fontSize:16>>;
 text(-9,6,'Postulate 3: Draw a circle') <<display:'internal',fontSize:18>>;

@@ -10,6 +10,6 @@ C=point(map () -> X(A)+0.6*(X(B)-X(A)),map () -> Y(A)+0.6*(Y(B)-Y(A)));
 segment(A,B) <<strokeWidth:8,strokeColor:'#ddd'>>;
 segment(A,C) <<strokeWidth:4,strokeColor:'#245ea6'>>;
 segment(C,B) <<strokeWidth:4,strokeColor:'#b45b27'>>;
-text(-9,-4,'AB = AC + CB, with CB > 0; hence AB > AC.') <<display:'html',fontSize:16>>;
-text(-9,-5.5,'AC is a proper part of AB. Keep A and B distinct.') <<display:'internal',fontSize:16>>;
+text(-9,-4,map () -> 'AB = '+round(100*dist(A,B))/100+'; AC = '+round(100*dist(A,C))/100+'; CB = '+round(100*dist(C,B))/100) <<display:'internal',fontSize:16>>;
+text(-9,-5.5,function(){return dist(A,B)<0.001 ? 'Move A and B apart.' : 'AC is '+round(1000*dist(A,C)/dist(A,B))/10+'% of the whole AB.';}) <<display:'internal',fontSize:16>>;
 text(-9,6,'Common notion 5: The whole exceeds a part') <<display:'internal',fontSize:18>>;

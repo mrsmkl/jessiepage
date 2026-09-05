@@ -7,5 +7,5 @@ $board.setBoundingBox([-10, 7, 10, -7], true);
 A = point(-4, -1);
 B = point(4, 2);
 segment(A,B) <<strokeWidth:3>>;
-text(-9,-5,'A straight segment joins A and B.') <<display:'internal',fontSize:16>>;
+text(-9,-5,map () -> 'Length AB = '+round(100*dist(A,B))/100) <<display:'internal',fontSize:16>>;
 text(-9,6,'Postulate 1: Join two points') <<display:'internal',fontSize:18>>;

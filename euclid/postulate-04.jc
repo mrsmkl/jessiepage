@@ -14,5 +14,5 @@ segment(A,B); segment(A,C);
 segment(D,E); segment(D,F);
 angle(B,A,C) <<name:'90°',selection:'minor'>>;
 angle(E,D,F) <<name:'90°',selection:'minor'>>;
-text(-9,-5,'Both right angles are equal, even after rotation.') <<display:'internal',fontSize:16>>;
+text(-9,-5,map () -> 'Angles BAC and EDF: '+round(10*deg(B,A,C))/10+'° and '+round(10*deg(E,D,F))/10+'°') <<display:'internal',fontSize:16>>;
 text(-9,6,'Postulate 4: All right angles are equal') <<display:'internal',fontSize:18>>;
