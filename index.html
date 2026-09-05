@@ -120,7 +120,30 @@
   </main>
   <div id="validator" aria-hidden="true"></div>
 
-  <script>
+  <script type="module">
+    import { ComputeEngine } from 'https://cdn.jsdelivr.net/npm/@cortex-js/compute-engine@0.119.0/+esm';
+
+    const computeEngine = new ComputeEngine();
+
+    // CortexJS helpers exposed as ordinary JessieCode functions.
+    JXG.JessieCode.prototype.addBuiltIn('simplify', (source) =>
+      computeEngine.parse(String(source)).simplify().latex
+    );
+    JXG.JessieCode.prototype.addBuiltIn('expand', (source) => {
+      const expression = computeEngine.parse(String(source));
+      return computeEngine.box(['Expand', expression]).evaluate().latex;
+    });
+    JXG.JessieCode.prototype.addBuiltIn('differentiate', (source, variable) => {
+      const expression = computeEngine.parse(String(source));
+      return computeEngine.box(['D', expression, variable || 'x']).evaluate().latex;
+    });
+    JXG.JessieCode.prototype.addBuiltIn('solve', (source, variable) =>
+      computeEngine.parse(String(source)).solve(variable || 'x').map((solution) => {
+        const value = solution.N().valueOf();
+        return typeof value === 'number' ? value : solution.latex;
+      })
+    );
+
     const editor = document.getElementById('editor');
     const status = document.getElementById('status');
     const points = document.getElementById('points');
@@ -143,7 +166,7 @@
     const STORAGE_KEY = 'jessiepage-state-v1';
     const DEFAULT_BBOX = [-6, 6, 6, -6];
     const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
-    const BUILTIN_EXAMPLES_VERSION = 6;
+    const BUILTIN_EXAMPLES_VERSION = 7;
     const ERROR_IDLE_MS = 700;
     const AUTOCOMPLETE_WORDS = [
       ['point', 'point(', 'geometry'],
@@ -201,7 +224,33 @@ fy = map (t) -> 2 * (1 - cos(t)) * sin(t);
 c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
       { key: 'loop', name: 'Example · Programming', bbox: [-6,6,6,-6], source: `for (i = 0; i < 9; i = i + 1) {
   point(i - 4, 2 * sin(i)) << name: '', withLabel: false >>;
-}` }
+}` },
+      { key: 'cas-simplify', name: 'CAS · Simplify + expand', bbox: [-6,6,6,-6], source: `// CortexJS symbolic simplification and expansion.
+simplifyInput = '(x+1)^2-(x^2+2x)';
+expandInput = '(x+1)^3';
+
+text(-5, 4, 'CortexJS CAS · Simplify + expand') << fontSize: 20 >>;
+text(-5, 2, simplifyInput + ' = ' + simplify(simplifyInput)) << fontSize: 17 >>;
+text(-5, 1, expandInput + ' = ' + expand(expandInput)) << fontSize: 17, strokeColor: '#2563eb' >>;` },
+      { key: 'cas-differentiate', name: 'CAS · Differentiate', bbox: [-6,6,6,-6], source: `// Symbolic differentiation with an explicit variable.
+expression = 'x^3+2x^2-x+4';
+derivative = differentiate(expression, 'x');
+
+text(-5, 4, 'CortexJS CAS · Differentiate') << fontSize: 20 >>;
+text(-5, 2, 'f(x) = ' + expression) << fontSize: 17 >>;
+text(-5, 1, "f'(x) = " + derivative) << fontSize: 17, strokeColor: '#2563eb' >>;` },
+      { key: 'cas-solve', name: 'CAS · Solve to points', bbox: [-6,6,6,-6], source: `// Solve an equation, then use its real roots as ordinary point coordinates.
+equation = 'x^2-5x+6=0';
+roots = solve(equation, 'x');
+
+X1 = point(roots[0], 0) << name: 'x1', size: 5 >>;
+X2 = point(roots[1], 0) << name: 'x2', size: 5 >>;
+AxisA = point(-5, 0) << name: '', visible: false >>;
+AxisB = point(5, 0) << name: '', visible: false >>;
+line(AxisA, AxisB) << strokeColor: '#99a4af' >>;
+text(-5, 4, 'CortexJS CAS · Solve') << fontSize: 20 >>;
+text(-5, 3, equation) << fontSize: 17 >>;
+text(-5, 2, 'Roots: ' + roots) << fontSize: 17, strokeColor: '#2563eb' >>;` }
     ];
 
     // Standalone JessieCode diagrams, installed once as editable local pages.
@@ -1464,4 +1513,3 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
   </script>
 </body>
 </html>
-
