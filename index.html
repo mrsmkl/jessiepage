@@ -76,13 +76,13 @@
     .canvas-tools { position: absolute; right: 20px; bottom: 20px; z-index: 20; display: flex; gap: 7px; }
     .canvas-tool { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid rgb(0 0 0 / .16); border-radius: 10px; background: rgb(255 255 255 / .94); color: #222; box-shadow: 0 1px 4px rgb(0 0 0 / .14); font: 600 22px/1 system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
     .canvas-tool:active { transform: translateY(1px); }
-    .canvas-tool.reset { font-size: 19px; }
+    .canvas-tool.reset { width: 60px; font-size: 13px; letter-spacing: -.02em; }
     .canvas-tool.fullscreen { font-size: 21px; }
 
     #validator { position: fixed; left: -10000px; top: -10000px; width: 400px; height: 400px; opacity: 0; pointer-events: none; }
 
     @media (max-width: 760px) {
-      main { grid-template-columns: 1fr; grid-template-rows: minmax(0, var(--editor-height)) 7px minmax(0, 1fr); }
+      main { grid-template-columns: 1fr; grid-template-rows: minmax(43px, var(--editor-height)) 7px minmax(0, 1fr); }
       .editor-pane { grid-template-rows: auto minmax(0, 1fr) auto; }
       .brand { display: none; }
       #page-select { width: 68px; min-width: 62px; }
@@ -98,7 +98,7 @@
       #board { border-radius: 8px; }
       .canvas-tools { right: 16px; bottom: 16px; gap: 8px; }
       .canvas-tool { width: 48px; height: 48px; border-radius: 12px; font-size: 26px; }
-      .canvas-tool.reset { font-size: 21px; }
+      .canvas-tool.reset { width: 64px; font-size: 14px; }
       .canvas-tool.fullscreen { font-size: 23px; }
     }
   </style>
@@ -394,7 +394,7 @@
     function setSplitFromPointer(event) {
       const rect = layout.getBoundingClientRect();
       if (window.matchMedia('(max-width: 760px)').matches) {
-        const minEditor = 0;
+        const minEditor = 43;
         const minCanvas = 0;
         const height = Math.max(minEditor, Math.min(rect.height - minCanvas, event.clientY - rect.top));
         document.documentElement.style.setProperty('--editor-height', `${height}px`);
@@ -510,7 +510,7 @@
     const savedWidth = Number(localStorage.getItem('jessiepage-editor-width'));
     const savedHeight = Number(localStorage.getItem('jessiepage-editor-height'));
     if (Number.isFinite(savedWidth) && savedWidth >= 0) document.documentElement.style.setProperty('--editor-width', `${savedWidth}px`);
-    if (Number.isFinite(savedHeight) && savedHeight >= 0) document.documentElement.style.setProperty('--editor-height', `${savedHeight}px`);
+    if (Number.isFinite(savedHeight) && savedHeight >= 43) document.documentElement.style.setProperty('--editor-height', `${savedHeight}px`);
 
     initialize();
   </script>
