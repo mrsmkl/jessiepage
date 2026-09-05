@@ -69,47 +69,15 @@
     .splitter::after { content: ""; position: absolute; inset: 0 -5px; }
     .splitter:hover, .splitter.dragging { background: var(--accent); }
 
-    .board-pane { min-width: 0; min-height: 0; padding: 12px; background: var(--panel-2); }
+    .board-pane { position: relative; min-width: 0; min-height: 0; padding: 12px; background: var(--panel-2); }
     #board { width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / .06), rgb(0 0 0 / .3)); cursor: grab; touch-action: none; overscroll-behavior: contain; }
     #board:active { cursor: grabbing; }
 
-    /* JSXGraph uses stable IDs for navigation buttons. Remove all pan arrows;
-       panning is done by dragging the board itself. */
-    #board_navigation_button_left,
-    #board_navigation_button_right,
-    #board_navigation_button_up,
-    #board_navigation_button_top,
-    #board_navigation_button_down,
-    #board .JXG_navigation_button_left,
-    #board .JXG_navigation_button_right,
-    #board .JXG_navigation_button_up,
-    #board .JXG_navigation_button_top,
-    #board .JXG_navigation_button_down {
-      display: none !important;
-    }
-
-    #board .JXG_navigation {
-      display: flex !important;
-      align-items: center;
-      gap: 5px;
-      right: 8px !important;
-      bottom: 8px !important;
-      padding: 0 !important;
-      background: transparent !important;
-    }
-
-    #board .JXG_navigation_button {
-      display: inline-flex !important;
-      align-items: center;
-      justify-content: center;
-      width: 36px !important;
-      height: 36px !important;
-      min-width: 36px !important;
-      padding: 0 !important;
-      border-radius: 8px !important;
-      font-size: 20px !important;
-      line-height: 1 !important;
-    }
+    .canvas-tools { position: absolute; right: 20px; bottom: 20px; z-index: 20; display: flex; gap: 7px; }
+    .canvas-tool { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid rgb(0 0 0 / .16); border-radius: 10px; background: rgb(255 255 255 / .94); color: #222; box-shadow: 0 1px 4px rgb(0 0 0 / .14); font: 600 22px/1 system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+    .canvas-tool:active { transform: translateY(1px); }
+    .canvas-tool.reset { font-size: 19px; }
+    .canvas-tool.fullscreen { font-size: 21px; }
 
     #validator { position: fixed; left: -10000px; top: -10000px; width: 400px; height: 400px; opacity: 0; pointer-events: none; }
 
@@ -128,14 +96,10 @@
       .splitter::after { inset: -5px 0; }
       .board-pane { padding: 8px; }
       #board { border-radius: 8px; }
-      #board .JXG_navigation { gap: 7px; right: 10px !important; bottom: 10px !important; }
-      #board .JXG_navigation_button {
-        width: 44px !important;
-        height: 44px !important;
-        min-width: 44px !important;
-        font-size: 25px !important;
-        border-radius: 10px !important;
-      }
+      .canvas-tools { right: 16px; bottom: 16px; gap: 8px; }
+      .canvas-tool { width: 48px; height: 48px; border-radius: 12px; font-size: 26px; }
+      .canvas-tool.reset { font-size: 21px; }
+      .canvas-tool.fullscreen { font-size: 23px; }
     }
   </style>
 </head>
@@ -162,7 +126,16 @@
     </section>
 
     <div id="splitter" class="splitter" role="separator" aria-label="Resize editor and canvas"></div>
-    <section class="board-pane"><div id="board" class="jxgbox"></div></section>
+
+    <section class="board-pane" id="board-pane">
+      <div id="board" class="jxgbox"></div>
+      <div class="canvas-tools" aria-label="Canvas controls">
+        <button id="canvas-zoom-in" class="canvas-tool" title="Zoom in" aria-label="Zoom in">+</button>
+        <button id="canvas-zoom-out" class="canvas-tool" title="Zoom out" aria-label="Zoom out">−</button>
+        <button id="canvas-reset" class="canvas-tool reset" title="Reset view" aria-label="Reset view">100%</button>
+        <button id="canvas-fullscreen" class="canvas-tool fullscreen" title="Fullscreen" aria-label="Fullscreen">⛶</button>
+      </div>
+    </section>
   </main>
   <div id="validator" aria-hidden="true"></div>
 
@@ -178,6 +151,11 @@
     const pageName = document.getElementById('page-name');
     const addPage = document.getElementById('add-page');
     const fullscreenButton = document.getElementById('fullscreen-button');
+    const boardPane = document.getElementById('board-pane');
+    const canvasZoomIn = document.getElementById('canvas-zoom-in');
+    const canvasZoomOut = document.getElementById('canvas-zoom-out');
+    const canvasReset = document.getElementById('canvas-reset');
+    const canvasFullscreen = document.getElementById('canvas-fullscreen');
 
     const STORAGE_KEY = 'jessiepage-state-v1';
     const DEFAULT_BBOX = [-6, 6, 6, -6];
@@ -192,11 +170,7 @@
       axis: true,
       keepaspectratio: true,
       showCopyright: false,
-      showNavigation: true,
-      showZoom: true,
-      showFullscreen: true,
-      showReload: false,
-      showScreenshot: false,
+      showNavigation: false,
       browserPan: false,
       pan: { enabled: true, needShift: false, needTwoFingers: false },
       zoom: { enabled: true, wheel: true, needShift: false, pinch: true, center: 'auto' },
@@ -295,8 +269,6 @@
         testBoard = JXG.JSXGraph.initBoard('validator', {
           ...boardOptions,
           axis: false,
-          showNavigation: false,
-          showFullscreen: false,
           pan: { enabled: false },
           zoom: { enabled: false },
           resize: { enabled: false }
@@ -312,7 +284,10 @@
     function simplePointNames(code) {
       const names = new Set();
       const assignment = new RegExp(String.raw`^\s*([A-Za-z_$][\w$]*)\s*=\s*point\s*\(\s*${NUMBER}\s*,\s*${NUMBER}\s*\)\s*;?(?:\s*\/\/.*)?\s*$`);
-      for (const line of code.split('\n')) { const match = line.match(assignment); if (match) names.add(match[1]); }
+      for (const line of code.split('\n')) {
+        const match = line.match(assignment);
+        if (match) names.add(match[1]);
+      }
       return names;
     }
 
@@ -355,21 +330,13 @@
       }
     }
 
-    function removePanButtons() {
-      for (const type of ['left', 'right', 'up', 'top', 'down']) {
-        document.getElementById(`board_navigation_button_${type}`)?.remove();
-      }
-    }
-
     function makeBoard(code, bbox) {
       if (board) JXG.JSXGraph.freeBoard(board);
       board = JXG.JSXGraph.initBoard('board', { ...boardOptions, boundingbox: Array.isArray(bbox) ? bbox : DEFAULT_BBOX });
-      removePanButtons();
       board.jc.parse(code);
       board.on('update', updatePointReadback);
       board.on('boundingbox', rememberView);
       board.update();
-      removePanButtons();
       bindSimplePointSourceSync(code);
       updatePointReadback();
     }
@@ -411,7 +378,10 @@
     async function initialize() {
       if (!loadState()) {
         let source = '// New construction\nA = point(-2, 0);\nB = point(2, 0);\nline(A, B);\n';
-        try { const response = await fetch('./construction.jessie', { cache: 'no-store' }); if (response.ok) source = await response.text(); } catch (err) { console.warn(err); }
+        try {
+          const response = await fetch('./construction.jessie', { cache: 'no-store' });
+          if (response.ok) source = await response.text();
+        } catch (err) { console.warn(err); }
         const page = makePage('Page 1', source);
         state.pages = [page];
         state.currentPageId = page.id;
@@ -424,14 +394,14 @@
     function setSplitFromPointer(event) {
       const rect = layout.getBoundingClientRect();
       if (window.matchMedia('(max-width: 760px)').matches) {
-        const minEditor = 43;
-        const minCanvas = 48;
+        const minEditor = 0;
+        const minCanvas = 0;
         const height = Math.max(minEditor, Math.min(rect.height - minCanvas, event.clientY - rect.top));
         document.documentElement.style.setProperty('--editor-height', `${height}px`);
         localStorage.setItem('jessiepage-editor-height', String(height));
       } else {
-        const minEditor = 80;
-        const minCanvas = 80;
+        const minEditor = 0;
+        const minCanvas = 0;
         const width = Math.max(minEditor, Math.min(rect.width - minCanvas, event.clientX - rect.left));
         document.documentElement.style.setProperty('--editor-width', `${width}px`);
         localStorage.setItem('jessiepage-editor-width', String(width));
@@ -439,16 +409,15 @@
       if (board) board.updateContainerDims();
     }
 
-    async function toggleFullscreen() {
+    async function toggleFullscreen(target = document.documentElement) {
       try {
         const active = document.fullscreenElement || document.webkitFullscreenElement;
         if (active) {
           if (document.exitFullscreen) await document.exitFullscreen();
           else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
         } else {
-          const root = document.documentElement;
-          if (root.requestFullscreen) await root.requestFullscreen();
-          else if (root.webkitRequestFullscreen) root.webkitRequestFullscreen();
+          if (target.requestFullscreen) await target.requestFullscreen();
+          else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
           else throw new Error('Fullscreen is not supported by this browser');
         }
       } catch (err) {
@@ -461,9 +430,10 @@
       fullscreenButton.textContent = active ? '×' : '⛶';
       fullscreenButton.title = active ? 'Exit fullscreen' : 'Enter fullscreen';
       fullscreenButton.setAttribute('aria-label', fullscreenButton.title);
-      setTimeout(() => {
-        if (board) board.updateContainerDims();
-      }, 50);
+      canvasFullscreen.textContent = active ? '×' : '⛶';
+      canvasFullscreen.title = active ? 'Exit fullscreen' : 'Fullscreen';
+      canvasFullscreen.setAttribute('aria-label', canvasFullscreen.title);
+      setTimeout(() => { if (board) board.updateContainerDims(); }, 50);
     }
 
     splitter.addEventListener('pointerdown', (event) => {
@@ -520,7 +490,17 @@
       pageName.select();
     });
 
-    fullscreenButton.addEventListener('click', toggleFullscreen);
+    fullscreenButton.addEventListener('click', () => toggleFullscreen(document.documentElement));
+    canvasFullscreen.addEventListener('click', () => toggleFullscreen(boardPane));
+    canvasZoomIn.addEventListener('click', () => { if (board) { board.zoomIn(); rememberView(); } });
+    canvasZoomOut.addEventListener('click', () => { if (board) { board.zoomOut(); rememberView(); } });
+    canvasReset.addEventListener('click', () => {
+      if (!board) return;
+      board.setBoundingBox(DEFAULT_BBOX, true);
+      board.fullUpdate();
+      rememberView();
+    });
+
     document.addEventListener('fullscreenchange', updateFullscreenButton);
     document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
 
@@ -529,8 +509,8 @@
 
     const savedWidth = Number(localStorage.getItem('jessiepage-editor-width'));
     const savedHeight = Number(localStorage.getItem('jessiepage-editor-height'));
-    if (Number.isFinite(savedWidth) && savedWidth > 0) document.documentElement.style.setProperty('--editor-width', `${savedWidth}px`);
-    if (Number.isFinite(savedHeight) && savedHeight > 0) document.documentElement.style.setProperty('--editor-height', `${savedHeight}px`);
+    if (Number.isFinite(savedWidth) && savedWidth >= 0) document.documentElement.style.setProperty('--editor-width', `${savedWidth}px`);
+    if (Number.isFinite(savedHeight) && savedHeight >= 0) document.documentElement.style.setProperty('--editor-height', `${savedHeight}px`);
 
     initialize();
   </script>
