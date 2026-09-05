@@ -197,6 +197,8 @@
     const DEFAULT_BBOX = [-6, 6, 6, -6];
     const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
     const BUILTIN_EXAMPLES_VERSION = 8;
+    const INPUT_RENDER_MS = 80;
+    const SAVE_IDLE_MS = 250;
     const ERROR_IDLE_MS = 700;
     const AUTOCOMPLETE_WORDS = [
       ['point', 'point(', 'geometry'],
@@ -991,6 +993,7 @@ text(-5, 4.3, "points([[roots[0], 0], [roots[1], 0]], 'R')") << fontSize: 14 >>;
 
     let board;
     let renderTimer;
+    let saveTimer;
     let errorLine = null;
     let state = { pages: [], currentPageId: null };
     let autocompleteItems = [];
@@ -1015,8 +1018,18 @@ text(-5, 4.3, "points([[roots[0], 0], [roots[1], 0]], 'R')") << fontSize: 14 >>;
     function makePage(name, source) { return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice() }; }
 
     function saveState() {
+      clearTimeout(saveTimer);
+      saveTimer = null;
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
       catch (err) { console.warn(err); setStatus('error', 'local save failed'); }
+    }
+
+    function queueSaveState() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        saveState();
+        updateProgramLink();
+      }, SAVE_IDLE_MS);
     }
 
     function loadState() {
@@ -1086,8 +1099,7 @@ text(-5, 4.3, "points([[roots[0], 0], [roots[1], 0]], 'R')") << fontSize: 14 >>;
       const page = currentPage();
       if (!page) return;
       page.source = source;
-      saveState();
-      updateProgramLink();
+      queueSaveState();
     }
 
     function rememberView() {
@@ -1261,17 +1273,22 @@ text(-5, 4.3, "points([[roots[0], 0], [roots[1], 0]], 'R')") << fontSize: 14 >>;
       renderTimer = setTimeout(() => render(editor.value, currentPage()?.bbox, true), ERROR_IDLE_MS);
     }
 
-    function processEditorInput() {
+    function processEditorInput(event) {
       clearTimeout(renderTimer);
       rememberSource(editor.value);
-      updateAutocomplete();
+      if (event?.inputType === 'insertFromPaste') hideAutocomplete();
+      else updateAutocomplete();
       if (autocompleteActive()) {
         clearError();
         setStatus('pending', 'completing…');
         return;
       }
-      if (render(editor.value, currentPage()?.bbox, false)) return;
-      deferError();
+      clearError();
+      setStatus('pending', 'checking…');
+      renderTimer = setTimeout(() => {
+        if (render(editor.value, currentPage()?.bbox, false)) return;
+        deferError();
+      }, INPUT_RENDER_MS);
     }
 
     function validateNow() {
