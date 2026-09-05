@@ -125,17 +125,35 @@
 
     const computeEngine = new ComputeEngine();
 
+    function toJessieExpression(json) {
+      if (typeof json === 'number') return String(json);
+      if (typeof json === 'string') return json;
+      if (!Array.isArray(json) || !json.length) throw new Error('Unsupported CAS result');
+      const [operator, ...operands] = json;
+      const values = operands.map(toJessieExpression);
+      switch (operator) {
+        case 'Add': return `(${values.join('+')})`;
+        case 'Multiply': return `(${values.join('*')})`;
+        case 'Power': return `(${values[0]}^${values[1]})`;
+        case 'Divide':
+        case 'Rational': return `(${values[0]}/${values[1]})`;
+        case 'Negate': return `(-${values[0]})`;
+        case 'Sqrt': return `sqrt(${values[0]})`;
+        default: return `${String(operator).toLowerCase()}(${values.join(',')})`;
+      }
+    }
+
     // CortexJS helpers exposed as ordinary JessieCode functions.
     JXG.JessieCode.prototype.addBuiltIn('simplify', (source) =>
-      computeEngine.parse(String(source)).simplify().latex
+      toJessieExpression(computeEngine.parse(String(source)).simplify().json)
     );
     JXG.JessieCode.prototype.addBuiltIn('expand', (source) => {
       const expression = computeEngine.parse(String(source));
-      return computeEngine.box(['Expand', expression]).evaluate().latex;
+      return toJessieExpression(computeEngine.box(['Expand', expression]).evaluate().json);
     });
     JXG.JessieCode.prototype.addBuiltIn('differentiate', (source, variable) => {
       const expression = computeEngine.parse(String(source));
-      return computeEngine.box(['D', expression, variable || 'x']).evaluate().latex;
+      return toJessieExpression(computeEngine.box(['D', expression, variable || 'x']).evaluate().json);
     });
     JXG.JessieCode.prototype.addBuiltIn('solve', (source, variable) =>
       computeEngine.parse(String(source)).solve(variable || 'x').map((solution) => {
@@ -143,6 +161,18 @@
         return typeof value === 'number' ? value : solution.latex;
       })
     );
+    JXG.JessieCode.prototype.addBuiltIn('points', function (coordinates, prefix) {
+      if (!Array.isArray(coordinates)) throw new Error('points() expects an array of [x, y] coordinates');
+      const namePrefix = prefix == null ? 'P' : String(prefix);
+      return coordinates.map((coordinate, index) => {
+        if (!Array.isArray(coordinate) || coordinate.length < 2) {
+          throw new Error('Each points() coordinate must be [x, y]');
+        }
+        return this.board.create('point', [coordinate[0], coordinate[1]], {
+          name: namePrefix ? `${namePrefix}${index + 1}` : ''
+        });
+      });
+    });
 
     const editor = document.getElementById('editor');
     const status = document.getElementById('status');
@@ -166,7 +196,9 @@
     const STORAGE_KEY = 'jessiepage-state-v1';
     const DEFAULT_BBOX = [-6, 6, 6, -6];
     const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
-    const BUILTIN_EXAMPLES_VERSION = 7;
+    const BUILTIN_EXAMPLES_VERSION = 8;
+    const INPUT_RENDER_MS = 80;
+    const SAVE_IDLE_MS = 250;
     const ERROR_IDLE_MS = 700;
     const AUTOCOMPLETE_WORDS = [
       ['point', 'point(', 'geometry'],
@@ -225,32 +257,38 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
       { key: 'loop', name: 'Example · Programming', bbox: [-6,6,6,-6], source: `for (i = 0; i < 9; i = i + 1) {
   point(i - 4, 2 * sin(i)) << name: '', withLabel: false >>;
 }` },
-      { key: 'cas-simplify', name: 'CAS · Simplify + expand', bbox: [-6,6,6,-6], source: `// CortexJS symbolic simplification and expansion.
-simplifyInput = '(x+1)^2-(x^2+2x)';
-expandInput = '(x+1)^3';
+      { key: 'cas-simplify', name: 'CAS · Simplify', bbox: [-6,6,6,-6], source: `// Define the function once; the CAS result is directly graphable.
+expression = '(x+1)^2-(x^2+2*x)';
+result = simplify(expression);
 
-text(-5, 4, 'CortexJS CAS · Simplify + expand') << fontSize: 20 >>;
-text(-5, 2, simplifyInput + ' = ' + simplify(simplifyInput)) << fontSize: 17 >>;
-text(-5, 1, expandInput + ' = ' + expand(expandInput)) << fontSize: 17, strokeColor: '#2563eb' >>;` },
-      { key: 'cas-differentiate', name: 'CAS · Differentiate', bbox: [-6,6,6,-6], source: `// Symbolic differentiation with an explicit variable.
-expression = 'x^3+2x^2-x+4';
+f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 4 >>;
+g = functiongraph(result) << strokeColor: '#2563eb', strokeWidth: 2, dash: 2 >>;
+text(-5, 5, 'simplify(' + expression + ') = ' + result) << fontSize: 17 >>;
+text(-5, 4.3, 'orange: input · blue dashed: simplified') << fontSize: 14 >>;`, previousSourceHash: '1d7f987a1cd670bac95e763b619eda6f425fba8498c4de448ff09f978d3ad272' },
+      { key: 'cas-expand', name: 'CAS · Expand', bbox: [-6,6,6,-6], source: `// Define the function once; the CAS result is directly graphable.
+expression = '(x+1)^3';
+result = expand(expression);
+
+f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 4 >>;
+g = functiongraph(result) << strokeColor: '#2563eb', strokeWidth: 2, dash: 2 >>;
+text(-5, 5, 'expand(' + expression + ') = ' + result) << fontSize: 17 >>;
+text(-5, 4.3, 'orange: input · blue dashed: expanded') << fontSize: 14 >>;` },
+      { key: 'cas-differentiate', name: 'CAS · Differentiate', bbox: [-6,6,6,-6], source: `// Define the function once, derive it, and graph both variables.
+expression = 'x^3+2*x^2-x+4';
 derivative = differentiate(expression, 'x');
 
-text(-5, 4, 'CortexJS CAS · Differentiate') << fontSize: 20 >>;
-text(-5, 2, 'f(x) = ' + expression) << fontSize: 17 >>;
-text(-5, 1, "f'(x) = " + derivative) << fontSize: 17, strokeColor: '#2563eb' >>;` },
-      { key: 'cas-solve', name: 'CAS · Solve to points', bbox: [-6,6,6,-6], source: `// Solve an equation, then use its real roots as ordinary point coordinates.
-equation = 'x^2-5x+6=0';
-roots = solve(equation, 'x');
+f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 3 >>;
+df = functiongraph(derivative) << strokeColor: '#2563eb', strokeWidth: 3 >>;
+text(-5, 5, "differentiate(" + expression + ", 'x') = " + derivative) << fontSize: 17 >>;
+text(-5, 4.3, "orange: f · blue: f'") << fontSize: 14 >>;`, previousSourceHash: '2238c1409676ca0c4996c03eb5bbe0b45ba515a682a3ee0a56da169e4a276743' },
+      { key: 'cas-solve', name: 'CAS · Solve to points', bbox: [-6,6,6,-6], source: `// Define the function once, solve it, graph it, and draw all roots at once.
+expression = 'x^2-5*x+6';
+roots = solve(expression + '=0', 'x');
 
-X1 = point(roots[0], 0) << name: 'x1', size: 5 >>;
-X2 = point(roots[1], 0) << name: 'x2', size: 5 >>;
-AxisA = point(-5, 0) << name: '', visible: false >>;
-AxisB = point(5, 0) << name: '', visible: false >>;
-line(AxisA, AxisB) << strokeColor: '#99a4af' >>;
-text(-5, 4, 'CortexJS CAS · Solve') << fontSize: 20 >>;
-text(-5, 3, equation) << fontSize: 17 >>;
-text(-5, 2, 'Roots: ' + roots) << fontSize: 17, strokeColor: '#2563eb' >>;` }
+rootPoints = points([[roots[0], 0], [roots[1], 0]], 'R');
+f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 3 >>;
+text(-5, 5, "solve(" + expression + "=0, 'x') = [" + roots + ']') << fontSize: 17 >>;
+text(-5, 4.3, "points([[roots[0], 0], [roots[1], 0]], 'R')") << fontSize: 14 >>;`, previousSourceHash: '550770f454f89141d5c196ad112534ace0cfa0f7eb55a32c74c1848324a02c4e' }
     ];
 
     // Standalone JessieCode diagrams, installed once as editable local pages.
@@ -955,6 +993,7 @@ text(-5, 2, 'Roots: ' + roots) << fontSize: 17, strokeColor: '#2563eb' >>;` }
 
     let board;
     let renderTimer;
+    let saveTimer;
     let errorLine = null;
     let state = { pages: [], currentPageId: null };
     let autocompleteItems = [];
@@ -979,8 +1018,18 @@ text(-5, 2, 'Roots: ' + roots) << fontSize: 17, strokeColor: '#2563eb' >>;` }
     function makePage(name, source) { return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice() }; }
 
     function saveState() {
+      clearTimeout(saveTimer);
+      saveTimer = null;
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
       catch (err) { console.warn(err); setStatus('error', 'local save failed'); }
+    }
+
+    function queueSaveState() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        saveState();
+        updateProgramLink();
+      }, SAVE_IDLE_MS);
     }
 
     function loadState() {
@@ -1050,8 +1099,7 @@ text(-5, 2, 'Roots: ' + roots) << fontSize: 17, strokeColor: '#2563eb' >>;` }
       const page = currentPage();
       if (!page) return;
       page.source = source;
-      saveState();
-      updateProgramLink();
+      queueSaveState();
     }
 
     function rememberView() {
@@ -1225,17 +1273,22 @@ text(-5, 2, 'Roots: ' + roots) << fontSize: 17, strokeColor: '#2563eb' >>;` }
       renderTimer = setTimeout(() => render(editor.value, currentPage()?.bbox, true), ERROR_IDLE_MS);
     }
 
-    function processEditorInput() {
+    function processEditorInput(event) {
       clearTimeout(renderTimer);
       rememberSource(editor.value);
-      updateAutocomplete();
+      if (event?.inputType === 'insertFromPaste') hideAutocomplete();
+      else updateAutocomplete();
       if (autocompleteActive()) {
         clearError();
         setStatus('pending', 'completing…');
         return;
       }
-      if (render(editor.value, currentPage()?.bbox, false)) return;
-      deferError();
+      clearError();
+      setStatus('pending', 'checking…');
+      renderTimer = setTimeout(() => {
+        if (render(editor.value, currentPage()?.bbox, false)) return;
+        deferError();
+      }, INPUT_RENDER_MS);
     }
 
     function validateNow() {
