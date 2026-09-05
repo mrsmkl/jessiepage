@@ -144,6 +144,7 @@
     const DEFAULT_BBOX = [-6, 6, 6, -6];
     const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
     const BUILTIN_EXAMPLES_VERSION = 1;
+    const ERROR_IDLE_MS = 700;
     const AUTOCOMPLETE_WORDS = [
       ['point', 'point(', 'geometry'],
       ['line', 'line(', 'geometry'],
@@ -415,7 +416,7 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
       updatePointReadback();
     }
 
-    function render(code, bbox) {
+    function render(code, bbox, showErrors = true) {
       try {
         validate(code);
         makeBoard(code, bbox);
@@ -426,9 +427,11 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
         setStatus('ok', 'saved');
         return true;
       } catch (err) {
-        showError(err);
+        if (showErrors) {
+          showError(err);
+          console.error(err);
+        }
         updateProgramLink();
-        console.error(err);
         return false;
       }
     }
@@ -437,16 +440,29 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
       return autocomplete.classList.contains('visible') && autocompleteItems.length > 0;
     }
 
-    function scheduleRender() {
+    function deferError() {
+      clearTimeout(renderTimer);
+      clearError();
+      setStatus('pending', 'typing…');
+      renderTimer = setTimeout(() => render(editor.value, currentPage()?.bbox, true), ERROR_IDLE_MS);
+    }
+
+    function processEditorInput() {
       clearTimeout(renderTimer);
       rememberSource(editor.value);
+      updateAutocomplete();
       if (autocompleteActive()) {
         clearError();
         setStatus('pending', 'completing…');
         return;
       }
-      setStatus('pending', 'checking…');
-      renderTimer = setTimeout(() => render(editor.value, currentPage()?.bbox), 180);
+      if (render(editor.value, currentPage()?.bbox, false)) return;
+      deferError();
+    }
+
+    function validateNow() {
+      clearTimeout(renderTimer);
+      render(editor.value, currentPage()?.bbox, true);
     }
 
     function showCurrentPage() {
@@ -668,15 +684,12 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
     document.addEventListener('fullscreenchange', updateFullscreenButtons);
     document.addEventListener('webkitfullscreenchange', updateFullscreenButtons);
 
-    editor.addEventListener('input', () => {
-      updateAutocomplete();
-      scheduleRender();
-    });
+    editor.addEventListener('input', processEditorInput);
     editor.addEventListener('scroll', positionErrorMarker);
     editor.addEventListener('click', () => updateAutocomplete());
     editor.addEventListener('blur', () => setTimeout(() => {
       hideAutocomplete();
-      scheduleRender();
+      validateNow();
     }, 80));
     editor.addEventListener('keydown', (event) => {
       if ((event.ctrlKey || event.metaKey) && event.code === 'Space') {
@@ -699,7 +712,7 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
       } else if (event.key === 'Escape') {
         event.preventDefault();
         hideAutocomplete();
-        scheduleRender();
+        if (!render(editor.value, currentPage()?.bbox, false)) deferError();
       }
     });
 
