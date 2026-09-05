@@ -40,6 +40,12 @@
     .editor-wrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
     #error-line-marker { position: absolute; z-index: 0; left: 0; right: 0; display: none; background: var(--errorbg); border-left: 3px solid var(--error); pointer-events: none; }
     textarea { position: relative; z-index: 1; width: 100%; height: 100%; min-width: 0; min-height: 0; resize: none; border: 0; outline: 0; padding: 16px 17px 24px; background: transparent; color: var(--text); caret-color: var(--accent); font: 14px/1.58 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; }
+    .autocomplete { position: absolute; z-index: 10; left: 12px; bottom: 8px; width: min(290px, calc(100% - 24px)); max-height: 190px; overflow: auto; display: none; padding: 4px; border: 1px solid var(--border); border-radius: 9px; background: color-mix(in srgb, var(--panel2) 96%, transparent); box-shadow: 0 5px 18px rgb(0 0 0 / .16); }
+    .autocomplete.visible { display: block; }
+    .autocomplete-item { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+    .autocomplete-item.selected { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+    .autocomplete-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: 12px ui-monospace, monospace; }
+    .autocomplete-kind { margin-left: auto; color: var(--muted); font-size: 10px; }
     .hint { min-height: 30px; padding: 7px 13px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; line-height: 1.35; user-select: none; }
     .hint.error { color: var(--error); background: var(--errorbg); }
     .point-readback { max-height: 128px; overflow: auto; padding: 8px 13px 10px; border-top: 1px solid var(--border); background: color-mix(in srgb, var(--panel2) 45%, transparent); }
@@ -76,6 +82,7 @@
       .canvas-tool { width: 48px; height: 48px; border-radius: 12px; font-size: 26px; }
       .canvas-tool.reset { width: 64px; font-size: 14px; }
       .canvas-tool.fullscreen { font-size: 23px; }
+      .autocomplete-item { min-height: 40px; }
     }
   </style>
 </head>
@@ -95,6 +102,7 @@
       <div class="editor-wrap">
         <div id="error-line-marker" aria-hidden="true"></div>
         <textarea id="editor" spellcheck="false" aria-label="JessieCode editor"></textarea>
+        <div id="autocomplete" class="autocomplete" role="listbox" aria-label="Autocomplete suggestions"></div>
       </div>
       <div id="hint" class="hint">Autosaved locally · drag canvas to pan · use board controls or wheel/pinch to zoom · drag simple points to edit source</div>
       <div class="point-readback"><div class="label">Points</div><pre id="points">—</pre></div>
@@ -118,6 +126,7 @@
     const points = document.getElementById('points');
     const hint = document.getElementById('hint');
     const errorMarker = document.getElementById('error-line-marker');
+    const autocomplete = document.getElementById('autocomplete');
     const layout = document.getElementById('layout');
     const splitter = document.getElementById('splitter');
     const pageSelect = document.getElementById('page-select');
@@ -135,120 +144,72 @@
     const DEFAULT_BBOX = [-6, 6, 6, -6];
     const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
     const BUILTIN_EXAMPLES_VERSION = 1;
+    const AUTOCOMPLETE_WORDS = [
+      ['point', 'point(', 'geometry'],
+      ['line', 'line(', 'geometry'],
+      ['segment', 'segment(', 'geometry'],
+      ['circle', 'circle(', 'geometry'],
+      ['polygon', 'polygon(', 'geometry'],
+      ['midpoint', 'midpoint(', 'geometry'],
+      ['intersection', 'intersection(', 'geometry'],
+      ['perpendicular', 'perpendicular(', 'geometry'],
+      ['circumcircle', 'circumcircle(', 'geometry'],
+      ['glider', 'glider(', 'geometry'],
+      ['tangent', 'tangent(', 'geometry'],
+      ['slider', 'slider(', 'control'],
+      ['functiongraph', 'functiongraph(', 'plot'],
+      ['curve', 'curve(', 'plot'],
+      ['map', 'map (x) -> ', 'language'],
+      ['sin', 'sin(', 'math'],
+      ['cos', 'cos(', 'math'],
+      ['PI', 'PI', 'constant'],
+      ['V', 'V(', 'value']
+    ].map(([label, insert, kind]) => ({ label, insert, kind }));
+
     const BUILTIN_EXAMPLES = [
-      {
-        key: 'basics',
-        name: 'Example · Basics',
-        bbox: [-6, 6, 6, -6],
-        source: `// Free points, lines, polygon, midpoint and circle.
-// Drag A, B and C.
+      { key: 'basics', name: 'Example · Basics', bbox: [-6,6,6,-6], source: `// Free points, lines, polygon, midpoint and circle.
 A = point(-3, -1);
 B = point(3, -1);
 C = point(0, 3);
-
 AB = segment(A, B);
 BC = line(B, C) << dash: 2 >>;
-tri = polygon(A, B, C) <<
-  fillColor: '#dbeafe',
-  fillOpacity: 0.35
->>;
+tri = polygon(A, B, C) << fillColor: '#dbeafe', fillOpacity: 0.35 >>;
 M = midpoint(A, B);
-c = circle(M, C) << strokeColor: '#7c3aed' >>;`
-      },
-      {
-        key: 'intersections',
-        name: 'Example · Intersections',
-        bbox: [-6, 6, 6, -6],
-        source: `// Two circles and their two intersection points.
-A = point(-2, 0);
+c = circle(M, C) << strokeColor: '#7c3aed' >>;` },
+      { key: 'intersections', name: 'Example · Intersections', bbox: [-6,6,6,-6], source: `A = point(-2, 0);
 B = point(2, 0);
 c1 = circle(A, 3) << fillOpacity: 0.06 >>;
 c2 = circle(B, 3) << fillOpacity: 0.06 >>;
 P = intersection(c1, c2, 0);
 Q = intersection(c1, c2, 1);
 segment(A, B);
-segment(P, Q) << dash: 2 >>;`
-      },
-      {
-        key: 'euler',
-        name: 'Example · Euler line',
-        bbox: [-6, 6, 6, -6],
-        source: `// Triangle centers: orthocenter, centroid, circumcircle and Euler line.
-A = point(-3, -2);
-B = point(3, -2);
-C = point(1, 3);
-tri = polygon(A, B, C) << fillOpacity: 0.12 >>;
-
-hA = perpendicular(tri.borders[1], A);
-hB = perpendicular(tri.borders[2], B);
-H = intersection(hA, hB, 0) << name: 'H' >>;
-
-mAB = midpoint(A, B);
-mBC = midpoint(B, C);
-mCA = midpoint(C, A);
-medA = segment(A, mBC);
-medB = segment(B, mCA);
-G = intersection(medA, medB, 0) << name: 'G' >>;
-
-cc = circumcircle(A, B, C) <<
-  dash: 3,
-  center: << name: 'O', withlabel: true, visible: true >>
->>;
-euler = line(H, G) << strokeWidth: 3, dash: 1 >>;`
-      },
-      {
-        key: 'glider',
-        name: 'Example · Glider + tangent',
-        bbox: [-6, 6, 6, -6],
-        source: `// P is constrained to the circle. Drag P around it.
-O = point(0, 0);
+segment(P, Q) << dash: 2 >>;` },
+      { key: 'glider', name: 'Example · Glider + tangent', bbox: [-6,6,6,-6], source: `O = point(0, 0);
 R = point(3, 0);
 c = circle(O, R);
 P = glider(0, 3, c);
 t = tangent(P);
-segment(O, P) << dash: 2 >>;`
-      },
-      {
-        key: 'functions',
-        name: 'Example · Function plots',
-        bbox: [-6, 6, 6, -6],
-        source: `// Function terms use JessieCode math syntax directly.
-f = functiongraph('sin(x)') << strokeWidth: 3 >>;
+segment(O, P) << dash: 2 >>;` },
+      { key: 'functions', name: 'Example · Function plots', bbox: [-6,6,6,-6], source: `f = functiongraph('sin(x)') << strokeWidth: 3 >>;
 g = functiongraph('0.25*x^2 - 2') << strokeColor: '#d97706' >>;
-h = functiongraph('2*cos(x/2)') << strokeColor: '#7c3aed', dash: 2 >>;`
-      },
-      {
-        key: 'slider',
-        name: 'Example · Slider + function',
-        bbox: [-6, 6, 6, -6],
-        source: `// A slider controls the amplitude of a sine wave.
-a = slider([-4, -4], [2, -4], [-2, 1, 2]) << name: 'a' >>;
-f = functiongraph(map (x) -> V(a) * sin(x)) << strokeWidth: 3 >>;`
-      },
-      {
-        key: 'cardioid',
-        name: 'Example · Parametric cardioid',
-        bbox: [-6, 6, 6, -6],
-        source: `// Parametric curves use JessieCode maps.
-fx = map (t) -> 2 * (1 - cos(t)) * cos(t);
+h = functiongraph('2*cos(x/2)') << strokeColor: '#7c3aed', dash: 2 >>;` },
+      { key: 'slider', name: 'Example · Slider + function', bbox: [-6,6,6,-6], source: `a = slider([-4, -4], [2, -4], [-2, 1, 2]) << name: 'a' >>;
+f = functiongraph(map (x) -> V(a) * sin(x)) << strokeWidth: 3 >>;` },
+      { key: 'cardioid', name: 'Example · Parametric cardioid', bbox: [-6,6,6,-6], source: `fx = map (t) -> 2 * (1 - cos(t)) * cos(t);
 fy = map (t) -> 2 * (1 - cos(t)) * sin(t);
-c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;`
-      },
-      {
-        key: 'loop',
-        name: 'Example · Programming',
-        bbox: [-6, 6, 6, -6],
-        source: `// JessieCode is a small programming language, not only expressions.
-for (i = 0; i < 9; i = i + 1) {
+c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
+      { key: 'loop', name: 'Example · Programming', bbox: [-6,6,6,-6], source: `for (i = 0; i < 9; i = i + 1) {
   point(i - 4, 2 * sin(i)) << name: '', withLabel: false >>;
-}`
-      }
+}` }
     ];
 
     let board;
     let renderTimer;
     let errorLine = null;
     let state = { pages: [], currentPageId: null };
+    let autocompleteItems = [];
+    let autocompleteIndex = 0;
+    let autocompleteToken = null;
 
     const boardOptions = {
       boundingbox: DEFAULT_BBOX,
@@ -262,31 +223,14 @@ for (i = 0; i < 9; i = i + 1) {
       resize: { enabled: true, throttle: 20 }
     };
 
-    function setStatus(kind, text, title = text) {
-      status.className = kind;
-      status.textContent = text;
-      status.title = title;
-    }
-
-    function newId() {
-      return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    }
-
-    function currentPage() {
-      return state.pages.find((p) => p.id === state.currentPageId) || state.pages[0] || null;
-    }
-
-    function makePage(name, source) {
-      return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice() };
-    }
+    function setStatus(kind, text, title = text) { status.className = kind; status.textContent = text; status.title = title; }
+    function newId() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
+    function currentPage() { return state.pages.find((p) => p.id === state.currentPageId) || state.pages[0] || null; }
+    function makePage(name, source) { return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice() }; }
 
     function saveState() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch (err) {
-        console.warn(err);
-        setStatus('error', 'local save failed');
-      }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+      catch (err) { console.warn(err); setStatus('error', 'local save failed'); }
     }
 
     function loadState() {
@@ -298,10 +242,7 @@ for (i = 0; i < 9; i = i + 1) {
         state = parsed;
         if (!state.pages.some((p) => p.id === state.currentPageId)) state.currentPageId = state.pages[0].id;
         return true;
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
+      } catch (err) { console.warn(err); return false; }
     }
 
     function updateProgramLink() {
@@ -319,9 +260,7 @@ for (i = 0; i < 9; i = i + 1) {
       return makePage((params.get('name') || 'Linked graph').slice(0, 60), params.get('code') || '');
     }
 
-    function consumeLinkedPageHash() {
-      history.replaceState(null, '', `${location.pathname}${location.search}`);
-    }
+    function consumeLinkedPageHash() { history.replaceState(null, '', `${location.pathname}${location.search}`); }
 
     function refreshPageControls() {
       pageSelect.replaceChildren();
@@ -355,34 +294,22 @@ for (i = 0; i < 9; i = i + 1) {
       const page = currentPage();
       if (!page || !board) return;
       const bbox = board.getBoundingBox();
-      if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) {
-        page.bbox = bbox.slice();
-        saveState();
-      }
+      if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) { page.bbox = bbox.slice(); saveState(); }
     }
 
     function validate(code) {
       let testBoard;
       try {
-        testBoard = JXG.JSXGraph.initBoard('validator', {
-          ...boardOptions,
-          axis: false,
-          pan: { enabled: false },
-          zoom: { enabled: false },
-          resize: { enabled: false }
-        });
+        testBoard = JXG.JSXGraph.initBoard('validator', { ...boardOptions, axis: false, pan: { enabled: false }, zoom: { enabled: false }, resize: { enabled: false } });
         testBoard.jc.parse(code);
         testBoard.update();
-      } finally {
-        if (testBoard) JXG.JSXGraph.freeBoard(testBoard);
-      }
+      } finally { if (testBoard) JXG.JSXGraph.freeBoard(testBoard); }
     }
 
     function installBuiltinExamples(selectBasics = false) {
       if ((state.builtinExamplesVersion || 0) >= BUILTIN_EXAMPLES_VERSION) return;
       const existing = new Set(state.pages.map((p) => p.builtinKey).filter(Boolean));
       let basicsId = null;
-
       for (const example of BUILTIN_EXAMPLES) {
         if (existing.has(example.key)) continue;
         try {
@@ -392,11 +319,8 @@ for (i = 0; i < 9; i = i + 1) {
           page.bbox = example.bbox.slice();
           state.pages.push(page);
           if (example.key === 'basics') basicsId = page.id;
-        } catch (err) {
-          console.warn(`Skipping invalid built-in example ${example.key}`, err);
-        }
+        } catch (err) { console.warn(`Skipping invalid built-in example ${example.key}`, err); }
       }
-
       state.builtinExamplesVersion = BUILTIN_EXAMPLES_VERSION;
       if (selectBasics && basicsId) state.currentPageId = basicsId;
       saveState();
@@ -408,14 +332,10 @@ for (i = 0; i < 9; i = i + 1) {
     }
 
     function positionErrorMarker() {
-      if (!errorLine) {
-        errorMarker.style.display = 'none';
-        return;
-      }
+      if (!errorLine) { errorMarker.style.display = 'none'; return; }
       const style = getComputedStyle(editor);
       const lineHeight = Number.parseFloat(style.lineHeight) || 22;
-      const paddingTop = Number.parseFloat(style.paddingTop) || 0;
-      const top = paddingTop + (errorLine - 1) * lineHeight - editor.scrollTop;
+      const top = (Number.parseFloat(style.paddingTop) || 0) + (errorLine - 1) * lineHeight - editor.scrollTop;
       errorMarker.style.height = `${lineHeight}px`;
       errorMarker.style.top = `${top}px`;
       errorMarker.style.display = (top + lineHeight < 0 || top > editor.clientHeight) ? 'none' : 'block';
@@ -437,22 +357,13 @@ for (i = 0; i < 9; i = i + 1) {
       setStatus('error', errorLine ? `line ${errorLine}` : 'error', message);
     }
 
-    function formatNumber(value) {
-      const clean = Math.abs(value) < 1e-12 ? 0 : value;
-      return Number(clean.toFixed(6)).toString();
-    }
-
-    function escapeRegex(value) {
-      return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
+    function formatNumber(value) { const clean = Math.abs(value) < 1e-12 ? 0 : value; return Number(clean.toFixed(6)).toString(); }
+    function escapeRegex(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
     function simplePointNames(code) {
       const names = new Set();
       const assignment = new RegExp(String.raw`^\s*([A-Za-z_$][\w$]*)\s*=\s*point\s*\(\s*${NUMBER}\s*,\s*${NUMBER}\s*\)\s*;?(?:\s*\/\/.*)?\s*$`);
-      for (const line of code.split('\n')) {
-        const match = line.match(assignment);
-        if (match) names.add(match[1]);
-      }
+      for (const line of code.split('\n')) { const match = line.match(assignment); if (match) names.add(match[1]); }
       return names;
     }
 
@@ -476,9 +387,7 @@ for (i = 0; i < 9; i = i + 1) {
 
     function namedPoints() {
       if (!board) return [];
-      return board.objectsList
-        .filter((el) => el && el.elType === 'point' && el.name && typeof el.X === 'function' && typeof el.Y === 'function' && Number.isFinite(el.X()) && Number.isFinite(el.Y()))
-        .sort((a, b) => a.name.localeCompare(b.name));
+      return board.objectsList.filter((el) => el && el.elType === 'point' && el.name && typeof el.X === 'function' && typeof el.Y === 'function' && Number.isFinite(el.X()) && Number.isFinite(el.Y())).sort((a, b) => a.name.localeCompare(b.name));
     }
 
     function updatePointReadback() {
@@ -490,14 +399,8 @@ for (i = 0; i < 9; i = i + 1) {
       const writable = simplePointNames(code);
       for (const point of namedPoints()) {
         if (!writable.has(point.name)) continue;
-        point.on('drag', () => {
-          syncSimplePointToSource(point.name, point.X(), point.Y());
-          updatePointReadback();
-        });
-        point.on('up', () => {
-          syncSimplePointToSource(point.name, point.X(), point.Y());
-          updatePointReadback();
-        });
+        point.on('drag', () => { syncSimplePointToSource(point.name, point.X(), point.Y()); updatePointReadback(); });
+        point.on('up', () => { syncSimplePointToSource(point.name, point.X(), point.Y()); updatePointReadback(); });
       }
     }
 
@@ -517,11 +420,7 @@ for (i = 0; i < 9; i = i + 1) {
         validate(code);
         makeBoard(code, bbox);
         const page = currentPage();
-        if (page) {
-          page.lastGoodSource = code;
-          page.source = code;
-          saveState();
-        }
+        if (page) { page.lastGoodSource = code; page.source = code; saveState(); }
         clearError();
         updateProgramLink();
         setStatus('ok', 'saved');
@@ -543,6 +442,7 @@ for (i = 0; i < 9; i = i + 1) {
 
     function showCurrentPage() {
       clearTimeout(renderTimer);
+      hideAutocomplete();
       const page = currentPage();
       if (!page) return;
       editor.value = page.source || '';
@@ -552,24 +452,104 @@ for (i = 0; i < 9; i = i + 1) {
       refreshPageControls();
     }
 
+    function sourceSymbols() {
+      const seen = new Set();
+      const out = [];
+      const re = /^\s*([A-Za-z_$][\w$]*)\s*=/gm;
+      let match;
+      while ((match = re.exec(editor.value)) !== null) {
+        const label = match[1];
+        if (seen.has(label)) continue;
+        seen.add(label);
+        out.push({ label, insert: label, kind: 'name' });
+      }
+      return out;
+    }
+
+    function tokenAtCaret() {
+      if (editor.selectionStart !== editor.selectionEnd) return null;
+      const caret = editor.selectionStart;
+      const match = editor.value.slice(0, caret).match(/([A-Za-z_$][\w$]*)$/);
+      if (!match) return null;
+      return { text: match[1], start: caret - match[1].length, end: caret };
+    }
+
+    function hideAutocomplete() {
+      autocomplete.classList.remove('visible');
+      autocomplete.replaceChildren();
+      autocompleteItems = [];
+      autocompleteIndex = 0;
+      autocompleteToken = null;
+    }
+
+    function drawAutocomplete() {
+      autocomplete.replaceChildren();
+      autocompleteItems.forEach((item, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `autocomplete-item${index === autocompleteIndex ? ' selected' : ''}`;
+        button.setAttribute('role', 'option');
+        button.setAttribute('aria-selected', index === autocompleteIndex ? 'true' : 'false');
+        const name = document.createElement('span');
+        name.className = 'autocomplete-name';
+        name.textContent = item.label;
+        const kind = document.createElement('span');
+        kind.className = 'autocomplete-kind';
+        kind.textContent = item.kind;
+        button.append(name, kind);
+        button.addEventListener('pointerdown', (event) => {
+          event.preventDefault();
+          acceptAutocomplete(index);
+        });
+        autocomplete.appendChild(button);
+      });
+      autocomplete.classList.toggle('visible', autocompleteItems.length > 0);
+    }
+
+    function updateAutocomplete(force = false) {
+      if (document.activeElement !== editor) { hideAutocomplete(); return; }
+      const token = tokenAtCaret();
+      if (!token || (!force && token.text.length < 1)) { hideAutocomplete(); return; }
+      const query = token.text.toLowerCase();
+      const seen = new Set();
+      const candidates = [...sourceSymbols(), ...AUTOCOMPLETE_WORDS]
+        .filter((item) => {
+          const key = item.label.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          if (force && !query) return true;
+          if (!key.startsWith(query)) return false;
+          return key !== query || item.insert !== item.label;
+        })
+        .slice(0, 7);
+      autocompleteToken = token;
+      autocompleteItems = candidates;
+      autocompleteIndex = Math.min(autocompleteIndex, Math.max(0, candidates.length - 1));
+      drawAutocomplete();
+    }
+
+    function acceptAutocomplete(index = autocompleteIndex) {
+      const item = autocompleteItems[index];
+      const token = autocompleteToken;
+      if (!item || !token) return;
+      editor.setRangeText(item.insert, token.start, token.end, 'end');
+      hideAutocomplete();
+      editor.focus();
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
     async function initialize() {
       const hadState = loadState();
       if (!hadState) {
         let source = '// New construction\nA = point(-2, 0);\nB = point(2, 0);\nline(A, B);\n';
-        try {
-          const response = await fetch('./construction.jessie', { cache: 'no-store' });
-          if (response.ok) source = await response.text();
-        } catch (err) {
-          console.warn(err);
-        }
+        try { const response = await fetch('./construction.jessie', { cache: 'no-store' }); if (response.ok) source = await response.text(); }
+        catch (err) { console.warn(err); }
         const page = makePage('Page 1', source);
         state.pages = [page];
         state.currentPageId = page.id;
         saveState();
       }
-
       installBuiltinExamples(!hadState);
-
       const linkedPage = linkedPageFromHash();
       if (linkedPage) {
         state.pages.push(linkedPage);
@@ -577,7 +557,6 @@ for (i = 0; i < 9; i = i + 1) {
         saveState();
         consumeLinkedPageHash();
       }
-
       refreshPageControls();
       showCurrentPage();
     }
@@ -607,9 +586,7 @@ for (i = 0; i < 9; i = i + 1) {
           else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
           else throw new Error('Fullscreen is not supported by this browser');
         }
-      } catch (err) {
-        setStatus('error', 'fullscreen', err?.message || String(err));
-      }
+      } catch (err) { setStatus('error', 'fullscreen', err?.message || String(err)); }
     }
 
     function updateFullscreenButtons() {
@@ -639,14 +616,7 @@ for (i = 0; i < 9; i = i + 1) {
       splitter.addEventListener('pointercancel', stop);
     });
 
-    pageSelect.addEventListener('change', () => {
-      rememberSource(editor.value);
-      rememberView();
-      state.currentPageId = pageSelect.value;
-      saveState();
-      showCurrentPage();
-    });
-
+    pageSelect.addEventListener('change', () => { rememberSource(editor.value); rememberView(); state.currentPageId = pageSelect.value; saveState(); showCurrentPage(); });
     pageName.addEventListener('input', () => {
       const page = currentPage();
       if (!page) return;
@@ -656,7 +626,6 @@ for (i = 0; i < 9; i = i + 1) {
       if (option) option.textContent = page.name;
       updateProgramLink();
     });
-
     pageName.addEventListener('blur', () => {
       const page = currentPage();
       if (!page) return;
@@ -665,7 +634,6 @@ for (i = 0; i < 9; i = i + 1) {
       saveState();
       refreshPageControls();
     });
-
     addPage.addEventListener('click', () => {
       rememberSource(editor.value);
       rememberView();
@@ -682,16 +650,37 @@ for (i = 0; i < 9; i = i + 1) {
     canvasFullscreen.addEventListener('click', () => toggleFullscreen(boardPane));
     canvasZoomIn.addEventListener('click', () => { if (board) { board.zoomIn(); rememberView(); } });
     canvasZoomOut.addEventListener('click', () => { if (board) { board.zoomOut(); rememberView(); } });
-    canvasReset.addEventListener('click', () => {
-      if (!board) return;
-      board.setBoundingBox(DEFAULT_BBOX, true);
-      board.fullUpdate();
-      rememberView();
-    });
+    canvasReset.addEventListener('click', () => { if (board) { board.setBoundingBox(DEFAULT_BBOX, true); board.fullUpdate(); rememberView(); } });
     document.addEventListener('fullscreenchange', updateFullscreenButtons);
     document.addEventListener('webkitfullscreenchange', updateFullscreenButtons);
-    editor.addEventListener('input', scheduleRender);
+
+    editor.addEventListener('input', () => { scheduleRender(); updateAutocomplete(); });
     editor.addEventListener('scroll', positionErrorMarker);
+    editor.addEventListener('click', () => updateAutocomplete());
+    editor.addEventListener('blur', () => setTimeout(hideAutocomplete, 80));
+    editor.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.code === 'Space') {
+        event.preventDefault();
+        updateAutocomplete(true);
+        return;
+      }
+      if (!autocomplete.classList.contains('visible')) return;
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        autocompleteIndex = (autocompleteIndex + 1) % autocompleteItems.length;
+        drawAutocomplete();
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        autocompleteIndex = (autocompleteIndex - 1 + autocompleteItems.length) % autocompleteItems.length;
+        drawAutocomplete();
+      } else if (event.key === 'Tab' || event.key === 'Enter') {
+        event.preventDefault();
+        acceptAutocomplete();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        hideAutocomplete();
+      }
+    });
 
     const savedWidth = Number(localStorage.getItem('jessiepage-editor-width'));
     const savedHeight = Number(localStorage.getItem('jessiepage-editor-height'));
