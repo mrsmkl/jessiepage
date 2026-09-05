@@ -12,15 +12,20 @@
     header { height: 52px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #ccc; }
     header strong { margin-right: auto; }
     button { padding: 6px 11px; font: inherit; cursor: pointer; }
-    main { height: calc(100vh - 52px); display: grid; grid-template-columns: minmax(280px, 42%) 1fr; }
+    main { height: calc(100vh - 52px); display: grid; grid-template-columns: minmax(300px, 42%) 1fr; }
     .editor-pane { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid #ccc; }
     textarea { flex: 1; width: 100%; resize: none; border: 0; outline: 0; padding: 14px; font: 15px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     #status { min-height: 32px; padding: 7px 10px; border-top: 1px solid #ddd; font: 12px/1.4 ui-monospace, monospace; white-space: pre-wrap; }
+    #point-readback { border-top: 1px solid #ddd; padding: 8px 10px; max-height: 145px; overflow: auto; }
+    #point-readback strong { display: block; margin-bottom: 4px; font-size: 12px; }
+    #points { margin: 0; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; }
     .board-pane { min-width: 0; min-height: 0; padding: 10px; }
     #board { width: 100%; height: 100%; border: 0; }
+    #validator { position: fixed; left: -10000px; top: -10000px; width: 400px; height: 400px; opacity: 0; pointer-events: none; }
     .error { color: #b00020; }
+    .pending { opacity: .65; }
     @media (max-width: 760px) {
-      main { height: calc(100vh - 52px); grid-template-columns: 1fr; grid-template-rows: 45% 55%; }
+      main { height: calc(100vh - 52px); grid-template-columns: 1fr; grid-template-rows: 48% 52%; }
       .editor-pane { border-right: 0; border-bottom: 1px solid #ccc; }
     }
   </style>
@@ -28,7 +33,7 @@
 <body>
   <header>
     <strong>JessiePage</strong>
-    <button id="run" title="Ctrl/Cmd + Enter">Run</button>
+    <button id="run" title="Ctrl/Cmd + Enter">Run now</button>
     <button id="reload">Reload file</button>
   </header>
 
@@ -36,40 +41,97 @@
     <section class="editor-pane">
       <textarea id="editor" spellcheck="false"></textarea>
       <div id="status">Loading construction.jessie…</div>
+      <div id="point-readback">
+        <strong>Point coordinates</strong>
+        <pre id="points">—</pre>
+      </div>
     </section>
     <section class="board-pane">
       <div id="board" class="jxgbox"></div>
     </section>
   </main>
+  <div id="validator" aria-hidden="true"></div>
 
   <script>
     const editor = document.getElementById('editor');
     const status = document.getElementById('status');
+    const points = document.getElementById('points');
     let board;
+    let renderTimer;
 
-    function resetBoard() {
-      if (board) JXG.JSXGraph.freeBoard(board);
-      board = JXG.JSXGraph.initBoard('board', {
-        boundingbox: [-6, 6, 6, -6],
-        axis: true,
-        keepaspectratio: true,
-        showCopyright: false,
-        showNavigation: true
-      });
+    const boardOptions = {
+      boundingbox: [-6, 6, 6, -6],
+      axis: true,
+      keepaspectratio: true,
+      showCopyright: false,
+      showNavigation: true
+    };
+
+    function validate(code) {
+      let testBoard;
+      try {
+        testBoard = JXG.JSXGraph.initBoard('validator', {
+          ...boardOptions,
+          axis: false,
+          showNavigation: false
+        });
+        testBoard.jc.parse(code);
+        testBoard.update();
+      } finally {
+        if (testBoard) JXG.JSXGraph.freeBoard(testBoard);
+      }
     }
 
-    function run() {
+    function updatePointReadback() {
+      if (!board) {
+        points.textContent = '—';
+        return;
+      }
+
+      const namedPoints = board.objectsList
+        .filter((el) => el && el.elType === 'point' && el.name && typeof el.X === 'function' && typeof el.Y === 'function')
+        .filter((el) => Number.isFinite(el.X()) && Number.isFinite(el.Y()))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      points.textContent = namedPoints.length
+        ? namedPoints.map((p) => `${p.name} = (${formatNumber(p.X())}, ${formatNumber(p.Y())})`).join('\n')
+        : 'No named points';
+    }
+
+    function formatNumber(value) {
+      const rounded = Math.abs(value) < 1e-12 ? 0 : value;
+      return Number(rounded.toFixed(6)).toString();
+    }
+
+    function render(code) {
       try {
-        resetBoard();
-        board.jc.parse(editor.value);
+        // Parse on an off-screen board first. If this fails, keep the last good
+        // construction on screen instead of replacing it with a broken board.
+        validate(code);
+
+        if (board) JXG.JSXGraph.freeBoard(board);
+        board = JXG.JSXGraph.initBoard('board', boardOptions);
+        board.jc.parse(code);
+        board.on('update', updatePointReadback);
         board.update();
+        updatePointReadback();
+
         status.className = '';
-        status.textContent = 'OK — Ctrl/Cmd+Enter to run';
+        status.textContent = 'OK — live update enabled';
+        return true;
       } catch (err) {
         status.className = 'error';
         status.textContent = err?.message || String(err);
         console.error(err);
+        return false;
       }
+    }
+
+    function scheduleRender() {
+      clearTimeout(renderTimer);
+      status.className = 'pending';
+      status.textContent = 'Checking…';
+      renderTimer = setTimeout(() => render(editor.value), 220);
     }
 
     async function loadFile() {
@@ -77,19 +139,24 @@
         const response = await fetch('./construction.jessie', { cache: 'no-store' });
         if (!response.ok) throw new Error(`Could not load construction.jessie (${response.status})`);
         editor.value = await response.text();
-        run();
+        render(editor.value);
       } catch (err) {
         status.className = 'error';
         status.textContent = err?.message || String(err);
       }
     }
 
-    document.getElementById('run').addEventListener('click', run);
+    editor.addEventListener('input', scheduleRender);
+    document.getElementById('run').addEventListener('click', () => {
+      clearTimeout(renderTimer);
+      render(editor.value);
+    });
     document.getElementById('reload').addEventListener('click', loadFile);
     document.addEventListener('keydown', (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
         event.preventDefault();
-        run();
+        clearTimeout(renderTimer);
+        render(editor.value);
       }
     });
 
