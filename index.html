@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JessiePage</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
+  <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; }
+    header { height: 52px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #ccc; }
+    header strong { margin-right: auto; }
+    button { padding: 6px 11px; font: inherit; cursor: pointer; }
+    main { height: calc(100vh - 52px); display: grid; grid-template-columns: minmax(280px, 42%) 1fr; }
+    .editor-pane { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid #ccc; }
+    textarea { flex: 1; width: 100%; resize: none; border: 0; outline: 0; padding: 14px; font: 15px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    #status { min-height: 32px; padding: 7px 10px; border-top: 1px solid #ddd; font: 12px/1.4 ui-monospace, monospace; white-space: pre-wrap; }
+    .board-pane { min-width: 0; min-height: 0; padding: 10px; }
+    #board { width: 100%; height: 100%; border: 0; }
+    .error { color: #b00020; }
+    @media (max-width: 760px) {
+      main { height: calc(100vh - 52px); grid-template-columns: 1fr; grid-template-rows: 45% 55%; }
+      .editor-pane { border-right: 0; border-bottom: 1px solid #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>JessiePage</strong>
+    <button id="run" title="Ctrl/Cmd + Enter">Run</button>
+    <button id="reload">Reload file</button>
+  </header>
+
+  <main>
+    <section class="editor-pane">
+      <textarea id="editor" spellcheck="false"></textarea>
+      <div id="status">Loading construction.jessie…</div>
+    </section>
+    <section class="board-pane">
+      <div id="board" class="jxgbox"></div>
+    </section>
+  </main>
+
+  <script>
+    const editor = document.getElementById('editor');
+    const status = document.getElementById('status');
+    let board;
+
+    function resetBoard() {
+      if (board) JXG.JSXGraph.freeBoard(board);
+      board = JXG.JSXGraph.initBoard('board', {
+        boundingbox: [-6, 6, 6, -6],
+        axis: true,
+        keepaspectratio: true,
+        showCopyright: false,
+        showNavigation: true
+      });
+    }
+
+    function run() {
+      try {
+        resetBoard();
+        board.jc.parse(editor.value);
+        board.update();
+        status.className = '';
+        status.textContent = 'OK — Ctrl/Cmd+Enter to run';
+      } catch (err) {
+        status.className = 'error';
+        status.textContent = err?.message || String(err);
+        console.error(err);
+      }
+    }
+
+    async function loadFile() {
+      try {
+        const response = await fetch('./construction.jessie', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Could not load construction.jessie (${response.status})`);
+        editor.value = await response.text();
+        run();
+      } catch (err) {
+        status.className = 'error';
+        status.textContent = err?.message || String(err);
+      }
+    }
+
+    document.getElementById('run').addEventListener('click', run);
+    document.getElementById('reload').addEventListener('click', loadFile);
+    document.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        run();
+      }
+    });
+
+    loadFile();
+  </script>
+</body>
+</html>
