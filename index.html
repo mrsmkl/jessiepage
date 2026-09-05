@@ -162,16 +162,18 @@
       })
     );
     JXG.JessieCode.prototype.addBuiltIn('points', function (coordinates, prefix) {
-      if (!Array.isArray(coordinates)) throw new Error('points() expects an array of [x, y] coordinates');
+      if (!Array.isArray(coordinates)) throw new Error('points() expects an array of values or [x, y] coordinates');
       const namePrefix = prefix == null ? 'P' : String(prefix);
-      return coordinates.map((coordinate, index) => {
+      return coordinates.map((item, index) => {
+        const coordinate = Array.isArray(item) ? item : [item, 0];
+        if (!Array.isArray(item) && !Number.isFinite(item)) return null;
         if (!Array.isArray(coordinate) || coordinate.length < 2) {
           throw new Error('Each points() coordinate must be [x, y]');
         }
         return this.board.create('point', [coordinate[0], coordinate[1]], {
           name: namePrefix ? `${namePrefix}${index + 1}` : ''
         });
-      });
+      }).filter(Boolean);
     });
 
     const editor = document.getElementById('editor');
@@ -196,7 +198,7 @@
     const STORAGE_KEY = 'jessiepage-state-v1';
     const DEFAULT_BBOX = [-6, 6, 6, -6];
     const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
-    const BUILTIN_EXAMPLES_VERSION = 8;
+    const BUILTIN_EXAMPLES_VERSION = 9;
     const INPUT_RENDER_MS = 80;
     const SAVE_IDLE_MS = 250;
     const ERROR_IDLE_MS = 700;
@@ -285,10 +287,10 @@ text(-5, 4.3, "orange: f · blue: f'") << fontSize: 14 >>;`, previousSourceHash:
 expression = 'x^2-5*x+6';
 roots = solve(expression + '=0', 'x');
 
-rootPoints = points([[roots[0], 0], [roots[1], 0]], 'R');
+rootPoints = points(roots, 'R');
 f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 3 >>;
 text(-5, 5, "solve(" + expression + "=0, 'x') = [" + roots + ']') << fontSize: 17 >>;
-text(-5, 4.3, "points([[roots[0], 0], [roots[1], 0]], 'R')") << fontSize: 14 >>;`, previousSourceHash: '550770f454f89141d5c196ad112534ace0cfa0f7eb55a32c74c1848324a02c4e' }
+text(-5, 4.3, "points(roots, 'R') draws every real numeric solution") << fontSize: 14 >>;`, previousSourceHashes: ['550770f454f89141d5c196ad112534ace0cfa0f7eb55a32c74c1848324a02c4e', 'fafe34c1409b378eea49d313bd16ec0b28def2e27bb754988d9f8532b912c0f3'] }
     ];
 
     // Standalone JessieCode diagrams, installed once as editable local pages.
@@ -1125,11 +1127,12 @@ text(-5, 4.3, "points([[roots[0], 0], [roots[1], 0]], 'R')") << fontSize: 14 >>;
       for (const example of BUILTIN_EXAMPLES) {
         if (existing.has(example.key)) {
           const page = state.pages.find((p) => p.builtinKey === example.key);
-          // Upgrade only pristine earlier Euclid examples. Preserve edited drawings.
-          if (example.previousSourceHash && page.source === page.lastGoodSource && globalThis.crypto?.subtle) {
+          // Upgrade only pristine earlier built-in examples. Preserve edited pages.
+          const previousHashes = example.previousSourceHashes || (example.previousSourceHash ? [example.previousSourceHash] : []);
+          if (previousHashes.length && page.source === page.lastGoodSource && globalThis.crypto?.subtle) {
             const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(page.source));
             const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
-            if (hash === example.previousSourceHash) {
+            if (previousHashes.includes(hash)) {
               try {
                 validate(example.source);
                 page.source = example.source;
