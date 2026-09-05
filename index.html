@@ -426,13 +426,18 @@
     }
 
     function updateFullscreenButton() {
-      const active = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-      fullscreenButton.textContent = active ? '×' : '⛶';
-      fullscreenButton.title = active ? 'Exit fullscreen' : 'Enter fullscreen';
+      const active = document.fullscreenElement || document.webkitFullscreenElement || null;
+      const pageIsFullscreen = active === document.documentElement;
+      const canvasIsFullscreen = active === boardPane;
+
+      fullscreenButton.textContent = pageIsFullscreen ? '×' : '⛶';
+      fullscreenButton.title = pageIsFullscreen ? 'Exit fullscreen' : 'Enter fullscreen';
       fullscreenButton.setAttribute('aria-label', fullscreenButton.title);
-      canvasFullscreen.textContent = active ? '×' : '⛶';
-      canvasFullscreen.title = active ? 'Exit fullscreen' : 'Fullscreen';
+
+      canvasFullscreen.textContent = canvasIsFullscreen ? '×' : '⛶';
+      canvasFullscreen.title = canvasIsFullscreen ? 'Exit canvas fullscreen' : 'Canvas fullscreen';
       canvasFullscreen.setAttribute('aria-label', canvasFullscreen.title);
+
       setTimeout(() => { if (board) board.updateContainerDims(); }, 50);
     }
 
