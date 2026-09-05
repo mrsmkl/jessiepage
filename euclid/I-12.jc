@@ -1,0 +1,36 @@
+// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
+// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
+// Blue points are inputs. Derived points follow their parents.
+// Coordinates implement the Euclidean plane; numerical checks are not proofs.
+// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
+$board.setBoundingBox([-9, 9, 13, -9], true);
+near = function(a,b) { return abs(a-b) < 0.000001*(1+abs(a)+abs(b));
+};
+len = function(a,b) { return sqrt((X(a)-X(b))^2+(Y(a)-Y(b))^2);
+};
+ang = function(a,b,c) { return acos(max(-1,min(1,((X(a)-X(b))*(X(c)-X(b))+(Y(a)-Y(b))*(Y(c)-Y(b)))/(len(a,b)*len(c,b)))));
+};
+pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
+};
+seg = function(a,b) { return segment(a,b) <<strokeWidth:2, strokeColor:'#34465d'>>;
+};
+aux = function(a,b) { return line(a,b) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;
+};
+mark = function(a,b,c,n) { return angle(a,b,c) <<name:n, radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
+};
+// I.12: Drop a perpendicular to a line
+// A sufficiently large circle centered at C cuts the line at D,E. Bisect DE by I.10. SSS makes the adjacent angles at M equal, hence right.
+pA=pt(-3,0,'A');
+pB=pt(3,0,'B');
+pC=pt(0,3,'C');
+l=aux(pA,pB);
+c=circle(pC,function(){return sqrt(((X(pB)-X(pA))*(Y(pC)-Y(pA))-(Y(pB)-Y(pA))*(X(pC)-X(pA)))^2/len(pA,pB)^2+len(pA,pB)^2/4);}) <<dash:2>>;
+pD=intersection(l,c,0) <<name:'D'>>;
+pE=intersection(l,c,1) <<name:'E'>>;
+pM=midpoint(pD,pE) <<name:'M'>>;
+seg(pC,pM);
+mark(pA,pM,pC,'');
+check = function(){return near(ang(pA,pM,pC),PI/2);};
+
+text(-8,8,'I.12') <<display:'internal',fontSize:20>>;
+text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;

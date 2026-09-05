@@ -1,0 +1,39 @@
+// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
+// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
+// Blue points are inputs. Derived points follow their parents.
+// Coordinates implement the Euclidean plane; numerical checks are not proofs.
+// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
+$board.setBoundingBox([-9, 9, 13, -9], true);
+near = function(a,b) { return abs(a-b) < 0.000001*(1+abs(a)+abs(b));
+};
+len = function(a,b) { return sqrt((X(a)-X(b))^2+(Y(a)-Y(b))^2);
+};
+pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
+};
+dp = function(f,g,n) { return point(f,g) <<name:n, size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;
+};
+seg = function(a,b) { return segment(a,b) <<strokeWidth:2, strokeColor:'#34465d'>>;
+};
+tri = function(a,b,c) { return polygon(a,b,c) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;
+};
+// I.22: Construct a triangle from three lengths
+// Strict triangle inequalities are required. Lay off one side and intersect circles whose radii are the other two. No real triangle exists after dragging beyond those inequalities.
+pU=pt(-6,-4,'U');
+pV=pt(-2,-4,'V');
+pW=pt(0,-4,'W');
+pZ=pt(3,-4,'Z');
+pH=pt(5,-4,'H');
+pK=pt(10,-4,'K');
+seg(pU,pV);
+seg(pW,pZ);
+seg(pH,pK);
+pA=pt(-2,0,'A');
+pB=dp(function(){return X(pA)+len(pU,pV);},function(){return Y(pA);},'B');
+c1=circle(pA,function(){return len(pH,pK);}) <<dash:2>>;
+c2=circle(pB,function(){return len(pW,pZ);}) <<dash:2>>;
+pC=intersection(c1,c2,0) <<name:'C'>>;
+tri(pA,pB,pC);
+check = function(){return len(pU,pV)+len(pW,pZ)>len(pH,pK) && len(pU,pV)+len(pH,pK)>len(pW,pZ) && len(pW,pZ)+len(pH,pK)>len(pU,pV) && near(len(pA,pB),len(pU,pV)) && near(len(pA,pC),len(pH,pK)) && near(len(pB,pC),len(pW,pZ));};
+
+text(-8,8,'I.22') <<display:'internal',fontSize:20>>;
+text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;

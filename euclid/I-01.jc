@@ -1,0 +1,35 @@
+// Euclid, Elements, Book I — JessieCode / JSXGraph 1.12.2
+// Original implementation, MIT license. Sources: github.com/jsxgraph/JessieCode and mathcs.clarku.edu/~djoyce/elements/bookI/bookI.html.
+// Blue points are inputs. Derived points follow their parents.
+// Coordinates implement the Euclidean plane; numerical checks are not proofs.
+// Avoid coincident inputs, collinear triangles, and zero/straight given angles.
+$board.setBoundingBox([-9, 9, 13, -9], true);
+near = function(a,b) { return abs(a-b) < 0.000001*(1+abs(a)+abs(b));
+};
+len = function(a,b) { return sqrt((X(a)-X(b))^2+(Y(a)-Y(b))^2);
+};
+pt = function(x,y,n) { return point(x,y) <<name:n, size:3, strokeColor:'#245ea6', fillColor:'#245ea6'>>;
+};
+tri = function(a,b,c) { return polygon(a,b,c) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;
+};
+cc = function(a,b) { return circle(a,b) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;
+};
+readout = function(y,label,f) { return text(-8,y,function(){return label+': '+round(f()*10000)/10000;}) <<display:'internal',fontSize:15>>;
+};
+mark = function(a,b,c,n) { return angle(a,b,c) <<name:n, radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;
+};
+// I.1: Construct an equilateral triangle
+// Both circles have radius AB. Their common point C gives AC=AB=BC.
+pA=pt(-2,0,'A');
+pB=pt(2,0,'B');
+c1=cc(pA,pB);
+c2=cc(pB,pA);
+pC=intersection(c1,c2,0) <<name:'C'>>;
+tri(pA,pB,pC);
+mark(pB,pA,pC,'60°');
+mark(pA,pB,pC,'60°');
+check = function(){return near(len(pA,pB),len(pA,pC)) && near(len(pA,pB),len(pB,pC));};
+readout(-5,'AB',function(){return len(pA,pB);});
+readout(-6,'AC',function(){return len(pA,pC);});
+text(-8,8,'I.1') <<display:'internal',fontSize:20>>;
+text(-8,-8,function(){return check() ? '✓' : 'Degenerate or invalid inputs';}) <<display:'internal',fontSize:14>>;
