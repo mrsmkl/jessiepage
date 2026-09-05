@@ -112,6 +112,7 @@
         <input id="page-name" type="text" maxlength="60" aria-label="Page name" title="Edit page name" />
         <button id="add-page" class="icon-button" title="New page" aria-label="New page">+</button>
         <button id="fullscreen-button" class="icon-button fullscreen-button" title="Enter fullscreen" aria-label="Enter fullscreen">⛶</button>
+        <a id="program-link" class="docs-link" href="#" target="_blank" rel="noopener noreferrer" title="Open this program as a new graph">Link ↗</a>
         <a class="docs-link" href="https://jsxgraph.org/docs/symbols/JXG.JessieCode.html" target="_blank" rel="noopener noreferrer" title="Official JessieCode reference">Jessie ↗</a>
         <div id="status">loading…</div>
       </div>
@@ -151,6 +152,7 @@
     const pageName = document.getElementById('page-name');
     const addPage = document.getElementById('add-page');
     const fullscreenButton = document.getElementById('fullscreen-button');
+    const programLink = document.getElementById('program-link');
     const boardPane = document.getElementById('board-pane');
     const canvasZoomIn = document.getElementById('canvas-zoom-in');
     const canvasZoomOut = document.getElementById('canvas-zoom-out');
@@ -186,6 +188,26 @@
     function newId() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
     function currentPage() { return state.pages.find((page) => page.id === state.currentPageId) || state.pages[0] || null; }
 
+    function updateProgramLink() {
+      const params = new URLSearchParams();
+      params.set('new', '1');
+      params.set('name', currentPage()?.name || 'Linked graph');
+      params.set('code', editor.value || '');
+      programLink.href = `${location.origin}${location.pathname}${location.search}#${params.toString()}`;
+    }
+
+    function linkedPageFromHash() {
+      if (!location.hash || location.hash.length < 2) return null;
+      const params = new URLSearchParams(location.hash.slice(1));
+      if (params.get('new') !== '1' || !params.has('code')) return null;
+      const name = (params.get('name') || 'Linked graph').slice(0, 60);
+      return makePage(name, params.get('code') || '');
+    }
+
+    function consumeLinkedPageHash() {
+      history.replaceState(null, '', `${location.pathname}${location.search}`);
+    }
+
     function saveState() {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
       catch (err) { console.warn(err); setStatus('error', 'local save failed'); }
@@ -213,6 +235,7 @@
       }
       pageSelect.value = state.currentPageId;
       pageName.value = currentPage()?.name || '';
+      updateProgramLink();
     }
 
     function nextPageName() {
@@ -223,7 +246,13 @@
     }
 
     function makePage(name, source) { return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice() }; }
-    function rememberSource(source) { const page = currentPage(); if (!page) return; page.source = source; saveState(); }
+    function rememberSource(source) {
+      const page = currentPage();
+      if (!page) return;
+      page.source = source;
+      saveState();
+      updateProgramLink();
+    }
     function rememberView() {
       const page = currentPage();
       if (!page || !board) return;
@@ -348,10 +377,12 @@
         const page = currentPage();
         if (page) { page.lastGoodSource = code; page.source = code; saveState(); }
         clearError();
+        updateProgramLink();
         setStatus('ok', 'saved');
         return true;
       } catch (err) {
         showError(err);
+        updateProgramLink();
         console.error(err);
         return false;
       }
@@ -387,6 +418,15 @@
         state.currentPageId = page.id;
         saveState();
       }
+
+      const linkedPage = linkedPageFromHash();
+      if (linkedPage) {
+        state.pages.push(linkedPage);
+        state.currentPageId = linkedPage.id;
+        saveState();
+        consumeLinkedPageHash();
+      }
+
       refreshPageControls();
       showCurrentPage();
     }
@@ -472,6 +512,7 @@
       saveState();
       const option = pageSelect.querySelector(`option[value="${CSS.escape(page.id)}"]`);
       if (option) option.textContent = page.name;
+      updateProgramLink();
     });
 
     pageName.addEventListener('blur', () => {
