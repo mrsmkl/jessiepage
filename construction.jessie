@@ -1,0 +1,14 @@
+// Drag A, B and C on the board.
+A = point(-3, -1);
+B = point(3, -1);
+C = point(0, 3);
+
+p = polygon(A, B, C);
+
+mAB = midpoint(A, B);
+mBC = midpoint(B, C);
+mCA = midpoint(C, A);
+
+line(mAB, mBC);
+line(mBC, mCA);
+line(mCA, mAB);
