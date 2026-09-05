@@ -143,7 +143,7 @@
     const STORAGE_KEY = 'jessiepage-state-v1';
     const DEFAULT_BBOX = [-6, 6, 6, -6];
     const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
-    const BUILTIN_EXAMPLES_VERSION = 4;
+    const BUILTIN_EXAMPLES_VERSION = 5;
     const ERROR_IDLE_MS = 700;
     const AUTOCOMPLETE_WORDS = [
       ['point', 'point(', 'geometry'],
@@ -259,7 +259,8 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
       10,
       -7
     ],
-    "source": "// Euclid Book I — Postulate 5: The parallel postulate\n// If a transversal makes same-side interior angles sum to less than two right angles, the two lines meet on that side.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.29; then I.30–48 through parallel-line results.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-4, 3);\nB = point(0, 2);\nC = point(-4, -3);\nD = point(0, -2);\na=line(A,B); b=line(C,D);\nsegment(B,D) <<strokeColor:'#b45b27',strokeWidth:3>>;\nR=point(map () -> 2*X(B)-X(A),map () -> 2*Y(B)-Y(A)) <<visible:false>>;\nS=point(map () -> 2*X(D)-X(C),map () -> 2*Y(D)-Y(C)) <<visible:false>>;\nE=intersection(a,b,0) <<name:'E'>>;\nangle(R,B,D) <<name:'α',selection:'minor'>>;\nangle(B,D,S) <<name:'β',selection:'minor'>>;\ntext(-9,-4.5,map () -> 'α + β = '+round(10*(min(deg(R,B,D),360-deg(R,B,D))+min(deg(B,D,S),360-deg(B,D,S))))/10+'°') <<display:'internal',fontSize:16>>;\ntext(-9,-5.5,'Here α + β < 180°: the lines meet on the right.') <<display:'internal',fontSize:16>>;\n// Keep the marked rays on the right of transversal BD when exploring this case.\n// At a 180-degree sum the lines are parallel and E has no finite position.\ntext(-9,6,'Postulate 5: The parallel postulate') <<display:'internal',fontSize:18>>;\n"
+    "source": "// Euclid Book I — Postulate 5: The parallel postulate\n// If a transversal makes same-side interior angles sum to less than two right angles, the two lines meet on that side.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.29; then I.30–48 through parallel-line results.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-4, 3);\nB = point(0, 2);\nC = point(-4, -3);\nD = point(0, -2);\na=line(A,B); b=line(C,D);\nsegment(B,D) <<strokeColor:'#b45b27',strokeWidth:3>>;\nR=point(map () -> 2*X(B)-X(A),map () -> 2*Y(B)-Y(A)) <<visible:false>>;\nS=point(map () -> 2*X(D)-X(C),map () -> 2*Y(D)-Y(C)) <<visible:false>>;\nE=intersection(a,b,0) <<name:'E'>>;\nangle(R,B,D) <<name:'α',selection:'minor'>>;\nangle(B,D,S) <<name:'β',selection:'minor'>>;\ntext(-9,-4.5,map () -> 'α + β = '+round(10*(min(deg(R,B,D),360-deg(R,B,D))+min(deg(B,D,S),360-deg(B,D,S))))/10+'°') <<display:'internal',fontSize:16>>;\ntext(-9,-5.5,'Here α + β < 180°: the lines meet on the right.') <<display:'html',fontSize:16>>;\n// Keep the marked rays on the right of transversal BD when exploring this case.\n// At a 180-degree sum the lines are parallel and E has no finite position.\ntext(-9,6,'Postulate 5: The parallel postulate') <<display:'internal',fontSize:18>>;\n",
+    "previousSourceHash": "96999bb04cbd5e70782b9631984a33a649f3716f81482ac45ed601fb64b3bd8a"
   },
   {
     "key": "euclid-common-notion-01",
@@ -314,7 +315,8 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
       10,
       -7
     ],
-    "source": "// Euclid Book I — Common notion 5: The whole exceeds a part\n// A whole magnitude is greater than a proper part of it.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.6, I.7, I.16, I.39–40.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-5, 0);\nB = point(5, 0);\nC=point(map () -> X(A)+0.6*(X(B)-X(A)),map () -> Y(A)+0.6*(Y(B)-Y(A)));\nsegment(A,B) <<strokeWidth:8,strokeColor:'#ddd'>>;\nsegment(A,C) <<strokeWidth:4,strokeColor:'#245ea6'>>;\nsegment(C,B) <<strokeWidth:4,strokeColor:'#b45b27'>>;\ntext(-9,-4,'AB = AC + CB, with CB > 0; hence AB > AC.') <<display:'internal',fontSize:16>>;\ntext(-9,-5.5,'AC is a proper part of AB. Keep A and B distinct.') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Common notion 5: The whole exceeds a part') <<display:'internal',fontSize:18>>;\n"
+    "source": "// Euclid Book I — Common notion 5: The whole exceeds a part\n// A whole magnitude is greater than a proper part of it.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.6, I.7, I.16, I.39–40.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-5, 0);\nB = point(5, 0);\nC=point(map () -> X(A)+0.6*(X(B)-X(A)),map () -> Y(A)+0.6*(Y(B)-Y(A)));\nsegment(A,B) <<strokeWidth:8,strokeColor:'#ddd'>>;\nsegment(A,C) <<strokeWidth:4,strokeColor:'#245ea6'>>;\nsegment(C,B) <<strokeWidth:4,strokeColor:'#b45b27'>>;\ntext(-9,-4,'AB = AC + CB, with CB > 0; hence AB > AC.') <<display:'html',fontSize:16>>;\ntext(-9,-5.5,'AC is a proper part of AB. Keep A and B distinct.') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Common notion 5: The whole exceeds a part') <<display:'internal',fontSize:18>>;\n",
+    "previousSourceHash": "08d76b069d226bb69dbabe537a2285ef725e0eb292f70b877ce7a47b27f8e704"
   },
   {
     "key": "euclid-i-01",
@@ -1297,6 +1299,16 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
         state.pages = [page];
         state.currentPageId = page.id;
         saveState();
+      }
+      // Repair literal HTML entities in known captions, including edited saved copies.
+      // Replace only the exact original line; keep all surrounding user edits.
+      for (const page of state.pages) {
+        for (const fix of [{"key": "euclid-postulate-05", "before": "text(-9,-5.5,'Here α + β < 180°: the lines meet on the right.') <<display:'internal',fontSize:16>>;", "after": "text(-9,-5.5,'Here α + β < 180°: the lines meet on the right.') <<display:'html',fontSize:16>>;"}, {"key": "euclid-common-notion-05", "before": "text(-9,-4,'AB = AC + CB, with CB > 0; hence AB > AC.') <<display:'internal',fontSize:16>>;", "after": "text(-9,-4,'AB = AC + CB, with CB > 0; hence AB > AC.') <<display:'html',fontSize:16>>;"}]) {
+          if (page.builtinKey !== fix.key) continue;
+          for (const field of ['source', 'lastGoodSource']) {
+            if (typeof page[field] === 'string') page[field] = page[field].split(fix.before).join(fix.after);
+          }
+        }
       }
       await installBuiltinExamples(!hadState);
       const linkedPage = linkedPageFromHash();
