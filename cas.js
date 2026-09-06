@@ -5,6 +5,17 @@ const CAS_CALLS = new Set([
   'range', 'map', 'zip', 'assume', 'forget'
 ]);
 const JESSIE_CALL = /\b(?:point|line|segment|circle|polygon|midpoint|intersection|perpendicular|circumcircle|glider|tangent|slider|functiongraph|curve|text|angle|map|V)\s*\(/;
+const PLAIN_MATH_FUNCTION = /(^|[^\\A-Za-z])(arcsinh|arccosh|arctanh|arcsin|arccos|arctan|sinh|cosh|tanh|sqrt|floor|ceil|sin|cos|tan|cot|sec|csc|log|ln|exp|abs)\s*\(/g;
+
+function normalizeMathSource(source) {
+  return source.replace(PLAIN_MATH_FUNCTION, (match, prefix, name) => `${prefix}\\${name}(`);
+}
+
+function displayLatex(latex) {
+  return String(latex || '')
+    .replaceAll('\\exponentialE', '\\mathrm{e}')
+    .replaceAll('\\imaginaryI', '\\mathrm{i}');
+}
 
 function splitArguments(source) {
   const parts = [];
@@ -111,7 +122,7 @@ function graphFor(expression, engine, preferredVariable = '') {
 
 function resolveExpression(source, engine, definitions) {
   if (/^[A-Za-z_$][\w$]*$/.test(source.trim()) && definitions.has(source.trim())) return definitions.get(source.trim());
-  const expression = engine.parse(source);
+  const expression = engine.parse(normalizeMathSource(source));
   if (hasMathError(expression.json)) throw new Error('Could not read this expression');
   return expression.evaluate();
 }
@@ -262,7 +273,7 @@ function evaluateLine(source, engine, definitions, lineIndex) {
     graph = graphFor(expression, engine, preferredVariable);
   }
 
-  latex = matrixLatex(expression, engine) || latex;
+  latex = displayLatex(matrixLatex(expression, engine) || latex);
   if (name) {
     definitions.set(name, expression);
     engine.assign(name, expression);
