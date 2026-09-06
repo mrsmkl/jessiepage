@@ -73,7 +73,37 @@ integrate(f, x)
 integrate(f, x, 0, 2)` },
   { key: 'cas-limit', name: 'CAS · Limit', bbox: [-6,6,6,-6], source: `// The removable hole has the limiting value 2.
 f = (x^2 - 1)/(x - 1)
-limit(f, x, 1)` }
+limit(f, x, 1)` },
+  { key: 'cas-complex', name: 'CAS · Complex plane', bbox: [-7,7,7,-7], source: `// Complex results use (real, imaginary) on the shared graph.
+z = 3 + 2*i
+w = (1-i)*z
+z
+w` },
+  { key: 'cas-determinant', name: 'CAS · Matrix determinant', bbox: [-6,6,6,-6], source: `// Matrices render as results but are not mistaken for point sets.
+A = [[1,2],[3,4]]
+determinant(A)` },
+  { key: 'cas-inverse', name: 'CAS · Matrix inverse', bbox: [-6,6,6,-6], source: `// Reuse one matrix definition.
+A = [[1,2],[3,4]]
+inverse(A)` },
+  { key: 'cas-transpose', name: 'CAS · Matrix transpose', bbox: [-6,6,6,-6], source: `// Transpose rows and columns.
+A = [[1,2,3],[4,5,6]]
+transpose(A)` },
+  { key: 'cas-eigenvalues', name: 'CAS · Matrix eigenvalues', bbox: [-6,6,6,-6], source: `// CortexJS computes the eigenvalues from the shared matrix.
+A = [[2,1],[1,2]]
+eigenvalues(A)` },
+  { key: 'cas-range', name: 'CAS · Range', bbox: [-6,6,6,-6], source: `// range() includes the end value when the step reaches it.
+ascending = range(-3, 3)
+descending = range(3, -3, -2)` },
+  { key: 'cas-sampled-points', name: 'CAS · Sampled points', bbox: [-6,8,6,-8], source: `// Sample a single function definition and graph all paired points together.
+f = x^2 - 4
+xs = range(-3, 3)
+ys = map(f, xs)
+samples = zip(xs, ys)` },
+  { key: 'cas-assumptions', name: 'CAS · Assumptions', bbox: [-6,6,6,-6], source: `// Assumptions affect every later line until forget() clears them.
+assume(x > 0)
+simplify(\\sqrt{x^2})
+forget(x)
+simplify(\\sqrt{x^2})` }
 ];
 
 // Standalone JessieCode diagrams, installed once as editable local pages.
