@@ -375,7 +375,7 @@ function validateAllBuiltinPages() {
   document.documentElement.dataset.builtinValidation = failures.length ? 'failed' : 'ok';
   document.documentElement.dataset.builtinCount = String(BUILTIN_EXAMPLES.length);
   if (failures.length) {
-    document.documentElement.dataset.builtinFailures = failures.map((failure) => failure.split(':')[0]).join(',');
+    document.documentElement.dataset.builtinFailures = failures.join(' | ');
     console.error('Built-in validation failed', failures);
   }
 }
