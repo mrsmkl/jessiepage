@@ -80,7 +80,7 @@ const canvasFullscreen = document.getElementById('canvas-fullscreen');
 const STORAGE_KEY = 'jessiepage-state-v1';
 const DEFAULT_BBOX = [-6, 6, 6, -6];
 const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
-const BUILTIN_EXAMPLES_VERSION = 15;
+const BUILTIN_EXAMPLES_VERSION = 18;
 const INPUT_RENDER_MS = 80;
 const SAVE_IDLE_MS = 250;
 const ERROR_IDLE_MS = 700;
@@ -110,6 +110,8 @@ const AUTOCOMPLETE_WORDS = [
   ['substitute', 'substitute(', 'CAS'],
   ['integrate', 'integrate(', 'CAS'],
   ['limit', 'limit(', 'CAS'],
+  ['sum', 'sum(', 'CAS'],
+  ['product', 'product(', 'CAS'],
   ['determinant', 'determinant(', 'CAS'],
   ['inverse', 'inverse(', 'CAS'],
   ['transpose', 'transpose(', 'CAS'],
@@ -360,6 +362,24 @@ function validate(code) {
   } finally { if (testBoard) JXG.JSXGraph.freeBoard(testBoard); }
 }
 
+function validateAllBuiltinPages() {
+  const failures = [];
+  for (const example of BUILTIN_EXAMPLES) {
+    try {
+      const analysis = analyzeSource(example.source, ComputeEngine);
+      const casErrors = analysis.results.filter((result) => result.error);
+      if (casErrors.length) throw new Error(casErrors.map((result) => result.error).join('; '));
+      validate(analysis.jessieSource);
+    } catch (error) { failures.push(`${example.key}: ${error?.message || error}`); }
+  }
+  document.documentElement.dataset.builtinValidation = failures.length ? 'failed' : 'ok';
+  document.documentElement.dataset.builtinCount = String(BUILTIN_EXAMPLES.length);
+  if (failures.length) {
+    document.documentElement.dataset.builtinFailures = failures.join(' | ');
+    console.error('Built-in validation failed', failures);
+  }
+}
+
 async function installBuiltinExamples(selectBasics = false) {
   if ((state.builtinExamplesVersion || 0) >= BUILTIN_EXAMPLES_VERSION) return;
   const existing = new Set(state.pages.map((p) => p.builtinKey).filter(Boolean));
@@ -470,7 +490,11 @@ function bindSimplePointSourceSync(code) {
   for (const point of namedPoints()) {
     if (!writable.has(point.name)) continue;
     point.on('drag', () => { syncSimplePointToSource(point.name, point.X(), point.Y()); updatePointReadback(); });
-    point.on('up', () => { syncSimplePointToSource(point.name, point.X(), point.Y()); updatePointReadback(); });
+    point.on('up', () => {
+      syncSimplePointToSource(point.name, point.X(), point.Y());
+      updatePointReadback();
+      render(editor.value, currentPage()?.bbox, false);
+    });
   }
 }
 
@@ -645,6 +669,10 @@ function acceptAutocomplete(index = autocompleteIndex) {
 }
 
 async function initialize() {
+  if (new URLSearchParams(location.search).has('validate-builtins')) {
+    validateAllBuiltinPages();
+    return;
+  }
   const hadState = loadState();
   if (!hadState) {
     let source = '// New construction\nA = point(-2, 0);\nB = point(2, 0);\nline(A, B);\n';

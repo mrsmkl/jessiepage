@@ -30,6 +30,8 @@ jobs:
       - run: npm ci
       - name: Test and build bundled page
         run: npm run check
+      - name: Validate every built-in page in JessieCode
+        run: node scripts/check-builtins-browser.mjs
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist

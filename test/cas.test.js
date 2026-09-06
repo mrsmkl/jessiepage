@@ -88,6 +88,105 @@ f*g`);
   assert.ok(Math.abs(board.created[0].args[0](1) - Math.cos(1) * Math.E) < 1e-12);
 });
 
+test('LaTeX-style assignments, composition and standalone lines are CAS input', () => {
+  const source = String.raw`f = \frac{x^2}{2}
+g = \sin(x)
+f + g
+\cos(x)`;
+  const analysis = successful(source);
+
+  assert.equal(analysis.jessieSource, '\n\n\n');
+  assert.equal(resultAt(analysis, 0).latex, '\\frac{x^2}{2}');
+  assert.equal(resultAt(analysis, 2).latex, '\\frac{x^2}{2}+\\sin(x)');
+  assert.equal(resultAt(analysis, 3).latex, '\\cos(x)');
+  assert.ok(resultAt(analysis, 3).graph);
+});
+
+test('finite sum and product wrappers reuse definitions and remain graphable', () => {
+  const analysis = successful(`sumTerm = x^k
+sumResult = sum(sumTerm, k, 1, 4)
+productTerm = x+k
+productResult = product(productTerm, k, 1, 3)
+sum(k^2, k, 1, 10)
+product(k, k, 1, 6)`);
+  const board = new MockBoard();
+
+  assert.equal(resultAt(analysis, 1).latex, 'x^4+x^3+x^2+x');
+  assert.equal(resultAt(analysis, 4).latex, '385');
+  assert.equal(resultAt(analysis, 5).latex, '720');
+  assert.ok(resultAt(analysis, 1).graph);
+  assert.ok(resultAt(analysis, 3).graph);
+  drawCasGraphs(board, analysis.results, new Set(['name:sumResult', 'name:productResult']), compile);
+  assert.equal(board.created[0].args[0](2), 30);
+  assert.equal(board.created[1].args[0](2), 60);
+});
+
+test('LaTeX sigma and product notation evaluate directly', () => {
+  const analysis = successful(String.raw`\sum_{k=1}^{10} k
+\prod_{k=1}^{6} k`);
+
+  assert.equal(resultAt(analysis, 0).latex, '55');
+  assert.equal(resultAt(analysis, 1).latex, '720');
+});
+
+test('finite sum and product wrappers validate their arguments', () => {
+  const analysis = analyze(`sum(k, k, 1)
+product(k, k + 1, 1, 4)`);
+
+  assert.match(resultAt(analysis, 0).error, /lower and upper bounds/);
+  assert.match(resultAt(analysis, 1).error, /variable name/);
+});
+
+test('constant definitions are shared with JessieCode in either text style', () => {
+  const analysis = successful(`scale = 2
+offset = 1;
+height = scale + offset
+A = point(-scale, offset);
+B = point(scale, height);
+segment(A, B);
+f = x^2 + height`);
+
+  assert.equal(resultAt(analysis, 0).latex, '2');
+  assert.equal(resultAt(analysis, 1).latex, '1');
+  assert.equal(resultAt(analysis, 2).latex, '3');
+  assert.equal(resultAt(analysis, 6).latex, 'x^2+3');
+  assert.equal(analysis.jessieSource, `scale = 2;
+offset = 1;
+height = 3;
+A = point(-scale, offset);
+B = point(scale, height);
+segment(A, B);
+`);
+});
+
+test('numeric collections are shared but symbolic functions remain CAS-only', () => {
+  const analysis = successful(`samples = {(1,2),(3,4)}
+points(samples);
+f = x^2 - 1`);
+
+  assert.equal(analysis.jessieSource, `samples = [[1,2],[3,4]];
+points(samples);
+`);
+  assert.ok(resultAt(analysis, 2).graph);
+});
+
+test('Jessie points and geometric carriers are available to later CAS lines', () => {
+  const analysis = successful(`A = point(-2, 0);
+B = point(2, 2);
+carrier = line(A, B);
+solve(carrier, y)
+c = circle(A, 3);
+solve(c, y)
+curve = functiongraph('x^2 - 1');
+solve(curve, y)`);
+
+  assert.equal(resultAt(analysis, 3).latex, '\\left\\{\\frac{x}{2}+1\\right\\}');
+  assert.match(resultAt(analysis, 5).latex, /-x\^2-4x\+5/);
+  assert.equal(resultAt(analysis, 7).latex, '\\left\\{x^2-1\\right\\}');
+  assert.match(analysis.jessieSource, /carrier = line\(A, B\);/);
+  assert.match(analysis.jessieSource, /c = circle\(A, 3\);/);
+});
+
 test('graph expressions compile once instead of substituting on every sample', () => {
   const analysis = successful('f = x^3 + 2*x^2 - x + 4');
   const board = new MockBoard();
@@ -196,9 +295,24 @@ a = 5`);
 
 test('every built-in CAS page evaluates without a CAS error', () => {
   const examples = BUILTIN_EXAMPLES.filter((example) => example.key.startsWith('cas-'));
-  assert.equal(examples.length, 21);
+  assert.equal(examples.length, 25);
 
   for (const example of examples) {
+    const errors = analyze(example.source).results.filter((result) => result.error);
+    assert.deepEqual(errors, [], example.key);
+  }
+});
+
+test('every built-in page has valid metadata and passes CAS source analysis', () => {
+  assert.equal(BUILTIN_EXAMPLES.length, 90);
+  assert.equal(new Set(BUILTIN_EXAMPLES.map((example) => example.key)).size, BUILTIN_EXAMPLES.length);
+
+  for (const example of BUILTIN_EXAMPLES) {
+    assert.ok(example.key, 'missing key');
+    assert.ok(example.name, `${example.key}: missing name`);
+    assert.equal(example.bbox.length, 4, `${example.key}: invalid bounding box`);
+    assert.ok(example.bbox.every(Number.isFinite), `${example.key}: non-numeric bounding box`);
+    assert.ok(example.source.trim(), `${example.key}: empty source`);
     const errors = analyze(example.source).results.filter((result) => result.error);
     assert.deepEqual(errors, [], example.key);
   }

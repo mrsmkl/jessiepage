@@ -1,6 +1,6 @@
 const CAS_CALLS = new Set([
   'simplify', 'expand', 'differentiate', 'solve', 'plot',
-  'factor', 'together', 'evaluate', 'numeric', 'substitute', 'integrate', 'limit',
+  'factor', 'together', 'evaluate', 'numeric', 'substitute', 'integrate', 'limit', 'sum', 'product',
   'determinant', 'inverse', 'transpose', 'eigenvalues',
   'range', 'map', 'zip', 'assume', 'forget'
 ]);
@@ -43,15 +43,23 @@ function callFromLine(source) {
   return { name: match[1].toLowerCase(), args: splitArguments(match[2]) };
 }
 
-function isCasLine(line) {
+function casSourceFromLine(line) {
   const source = line.trim();
-  if (!source || source.startsWith('//')) return false;
-  if (/^(?:\$board|for|if|while)\b/.test(source) || /;|<<|\.glide\s*\(/.test(source)) return false;
+  if (!source || source.startsWith('//')) return null;
+  if (/^[{}]$/.test(source)) return null;
+  if (/^(?:\$board|for|if|while)\b/.test(source) || /<<|\.glide\s*\(/.test(source)) return null;
+  const terminatedAssignment = source.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)([^;]+?)\s*;\s*(?:\/\/.*)?$/);
+  const terminatedBody = terminatedAssignment?.[2] || '';
+  if (terminatedAssignment && /[\d+\-*/^()]/.test(terminatedBody) && !/[\[\]{}]/.test(terminatedBody)
+      && !JESSIE_CALL.test(source) && !/['"]/.test(source)) {
+    return `${terminatedAssignment[1]} = ${terminatedAssignment[2].trim()}`;
+  }
+  if (/;/.test(source)) return null;
   const assignment = source.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)(.+)$/);
   const body = assignment?.[2]?.trim() || source;
-  if (callFromLine(body)) return true;
-  if (JESSIE_CALL.test(source) || /['"]/.test(source)) return false;
-  return Boolean(assignment || /^[\dA-Za-z_+\-*/^().,=\[\]\s]+$/.test(source));
+  if (callFromLine(body)) return source;
+  if (JESSIE_CALL.test(source) || /['"]/.test(source)) return null;
+  return assignment || /^[\dA-Za-z_+\-*/^().,=<>\\{}\[\]|\s]+$/.test(source) ? source : null;
 }
 
 function hasMathError(json) {
@@ -106,6 +114,67 @@ function pointValues(expression, engine) {
   return pairs.every(Boolean) ? pairs : [];
 }
 
+function jessieValue(expression, engine) {
+  const value = numberValue(expression);
+  if (value !== null) return Number(value.toPrecision(15)).toString();
+  if (expression.json === true || expression.json === false) return String(expression.json);
+  const json = expression.json;
+  if (!Array.isArray(json) || !['List', 'Set', 'Tuple'].includes(json[0])) return '';
+  const items = json.slice(1).map((item) => jessieValue(engine.box(item), engine));
+  return items.every(Boolean) ? `[${items.join(',')}]` : '';
+}
+
+function geometryDefinitionFromLine(line, engine, definitions) {
+  const match = line.trim().match(/^([A-Za-z_$][\w$]*)\s*=\s*(point|line|segment|circle|functiongraph)\s*\(([\s\S]*?)\)\s*(?:<<[\s\S]*>>)?\s*;?\s*$/i);
+  if (!match) return;
+  const [, name, rawKind, rawArguments] = match;
+  const kind = rawKind.toLowerCase();
+  const args = splitArguments(rawArguments);
+  const coordinates = (source) => {
+    const json = definitions.get(source.trim())?.json;
+    if (!Array.isArray(json) || json[0] !== 'Tuple' || json.length !== 3) return null;
+    const x = numberValue(engine.box(json[1]));
+    const y = numberValue(engine.box(json[2]));
+    return x === null || y === null ? null : [x, y];
+  };
+  let expression;
+
+  if (kind === 'point' && args.length >= 2) {
+    const x = numberValue(resolveExpression(args[0], engine, definitions));
+    const y = numberValue(resolveExpression(args[1], engine, definitions));
+    if (x !== null && y !== null) expression = engine.box(['Tuple', x, y]);
+  } else if (['line', 'segment'].includes(kind) && args.length >= 2) {
+    const a = coordinates(args[0]);
+    const b = coordinates(args[1]);
+    if (a && b && (a[0] !== b[0] || a[1] !== b[1])) {
+      const xCoefficient = a[1] - b[1];
+      const yCoefficient = b[0] - a[0];
+      expression = engine.box(['Equal',
+        ['Add', ['Multiply', xCoefficient, 'x'], ['Multiply', yCoefficient, 'y']],
+        xCoefficient * a[0] + yCoefficient * a[1]
+      ]).evaluate();
+    }
+  } else if (kind === 'circle' && args.length >= 2) {
+    const center = coordinates(args[0]);
+    const through = coordinates(args[1]);
+    const radius = through ? Math.hypot(through[0] - center?.[0], through[1] - center?.[1])
+      : numberValue(resolveExpression(args[1], engine, definitions));
+    if (center && radius !== null) {
+      expression = engine.box(['Equal',
+        ['Add', ['Power', ['Subtract', 'x', center[0]], 2], ['Power', ['Subtract', 'y', center[1]], 2]],
+        radius ** 2
+      ]).evaluate();
+    }
+  } else if (kind === 'functiongraph' && args.length) {
+    const quoted = args[0].match(/^(['"])([\s\S]*)\1$/);
+    if (quoted) expression = engine.box(['Equal', 'y', resolveExpression(quoted[2], engine, definitions)]).evaluate();
+  }
+
+  if (!expression) return;
+  definitions.set(name, expression);
+  engine.assign(name, expression);
+}
+
 function graphFor(expression, engine, preferredVariable = '') {
   const complex = complexValue(expression, engine);
   if (complex && complex[1] !== 0) return { kind: 'points', coordinates: [complex] };
@@ -122,7 +191,12 @@ function graphFor(expression, engine, preferredVariable = '') {
 
 function resolveExpression(source, engine, definitions) {
   if (/^[A-Za-z_$][\w$]*$/.test(source.trim()) && definitions.has(source.trim())) return definitions.get(source.trim());
-  const expression = engine.parse(normalizeMathSource(source));
+  let expandedSource = source;
+  for (const [name, value] of [...definitions].sort(([a], [b]) => b.length - a.length)) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    expandedSource = expandedSource.replace(new RegExp(`(^|[^A-Za-z0-9_$])${escaped}(?=$|[^A-Za-z0-9_$])`, 'g'), `$1(${value.latex})`);
+  }
+  const expression = engine.parse(normalizeMathSource(expandedSource));
   if (hasMathError(expression.json)) throw new Error('Could not read this expression');
   return expression.evaluate();
 }
@@ -236,6 +310,17 @@ function evaluateLine(source, engine, definitions, lineIndex) {
       graph = graphFor(expression, engine, variable);
     }
     latex = expression.latex;
+  } else if (['sum', 'product'].includes(call?.name)) {
+    if (call.args.length !== 4) throw new Error(`${call.name}() needs expression, variable, lower and upper bounds`);
+    const variable = call.args[1].trim();
+    if (!/^[A-Za-z_$][\w$]*$/.test(variable)) throw new Error(`${call.name}() needs a variable name`);
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const lower = resolveExpression(call.args[2], engine, definitions);
+    const upper = resolveExpression(call.args[3], engine, definitions);
+    const operator = call.name === 'sum' ? 'Sum' : 'Product';
+    expression = engine.box([operator, input, ['Tuple', variable, lower, upper]]).evaluate();
+    latex = expression.latex;
+    graph = graphFor(expression, engine);
   } else if (call?.name === 'limit') {
     if (call.args.length !== 3) throw new Error('limit() needs an expression, variable and value');
     const input = resolveExpression(call.args[0], engine, definitions);
@@ -278,12 +363,14 @@ function evaluateLine(source, engine, definitions, lineIndex) {
     definitions.set(name, expression);
     engine.assign(name, expression);
   }
+  const sharedValue = name ? jessieValue(expression, engine) : '';
   return {
     lineIndex,
     key: name ? `name:${name}` : `line:${lineIndex}`,
     latex,
     graph,
-    forceGraph
+    forceGraph,
+    jessieDefinition: sharedValue ? `${name} = ${sharedValue};` : ''
   };
 }
 
@@ -294,9 +381,18 @@ export function analyzeSource(source, ComputeEngine) {
   const results = [];
   const jessieLines = lines.slice();
   lines.forEach((line, lineIndex) => {
-    if (!isCasLine(line)) return;
+    const casSource = casSourceFromLine(line);
+    if (casSource === null) {
+      try { geometryDefinitionFromLine(line, engine, definitions); }
+      catch { /* Dynamic Jessie constructions do not need a CAS representation. */ }
+      return;
+    }
     jessieLines[lineIndex] = '';
-    try { results.push(evaluateLine(line.trim(), engine, definitions, lineIndex)); }
+    try {
+      const result = evaluateLine(casSource, engine, definitions, lineIndex);
+      results.push(result);
+      jessieLines[lineIndex] = result.jessieDefinition;
+    }
     catch (error) {
       results.push({ lineIndex, key: `line:${lineIndex}`, error: error?.message || String(error), graph: null, forceGraph: false });
     }

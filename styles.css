@@ -31,17 +31,17 @@ main { width: 100vw; height: 100dvh; display: grid; grid-template-columns: minma
 .editor-wrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 .source-editor { position: absolute; inset: 0; min-width: 0; min-height: 0; overflow: hidden; }
 #error-line-marker { position: absolute; z-index: 0; left: 0; right: 0; display: none; background: var(--errorbg); border-left: 3px solid var(--error); pointer-events: none; }
-textarea { position: relative; z-index: 1; width: 100%; height: 100%; min-width: 0; min-height: 0; resize: none; border: 0; outline: 0; padding: 16px 17px 24px; background: transparent; color: var(--text); caret-color: var(--accent); font: 14px/1.58 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; }
+textarea { position: relative; z-index: 1; width: 100%; height: 100%; min-width: 0; min-height: 0; resize: none; border: 0; outline: 0; padding: 16px 17px 24px; background: transparent; color: var(--text); caret-color: var(--accent); font: 14px/2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; }
 .cas-results { position: absolute; z-index: 2; inset: 0 10px; min-width: 0; min-height: 0; overflow: hidden; pointer-events: none; }
 .cas-result-lines { width: 100%; min-width: 0; padding: 16px 0 24px; }
-.cas-result-line { height: var(--cas-line-height, 22px); display: flex; justify-content: flex-end; align-items: center; color: var(--text); white-space: nowrap; font-size: 12px; }
-.cas-result-bubble { position: relative; max-width: min(48%, 360px); min-height: 19px; display: inline-flex; align-items: center; gap: 7px; padding: 1px 7px; border: 1px solid color-mix(in srgb, var(--border) 72%, transparent); border-radius: 6px; background: color-mix(in srgb, var(--panel2) 88%, transparent); box-shadow: 0 1px 4px rgb(0 0 0 / .08); pointer-events: auto; }
+.cas-result-line { height: var(--cas-line-height, 28px); display: flex; justify-content: flex-end; align-items: center; color: var(--text); white-space: nowrap; font-size: 15px; }
+.cas-result-bubble { position: relative; max-width: min(48%, 360px); min-height: 25px; display: inline-flex; align-items: center; gap: 7px; padding: 1px 7px; border: 1px solid color-mix(in srgb, var(--border) 72%, transparent); border-radius: 6px; background: color-mix(in srgb, var(--panel2) 88%, transparent); box-shadow: 0 1px 4px rgb(0 0 0 / .08); pointer-events: auto; }
 .cas-result-bubble::before { content: ""; position: absolute; top: 50%; right: 100%; width: var(--connector-width, 12px); border-top: 1px solid color-mix(in srgb, var(--muted) 32%, transparent); }
 .cas-formula { max-width: 230px; overflow: hidden; text-overflow: ellipsis; }
 .cas-formula .katex { font-size: 1em; }
 .cas-result-line.cas-error { color: var(--error); font: 11px/1.2 ui-monospace, monospace; }
 .cas-result-line.cas-error .cas-result-bubble { border-color: color-mix(in srgb, var(--error) 32%, transparent); background: color-mix(in srgb, var(--errorbg) 88%, transparent); }
-.graph-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font: 10px/1 system-ui, sans-serif; cursor: pointer; user-select: none; }
+.graph-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font: 11px/1 system-ui, sans-serif; cursor: pointer; user-select: none; }
 .graph-toggle input { position: absolute; opacity: 0; pointer-events: none; }
 .graph-switch { width: 21px; height: 12px; padding: 2px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 35%, transparent); transition: background .15s ease; }
 .graph-switch::after { content: ""; display: block; width: 8px; height: 8px; border-radius: 50%; background: var(--panel2); box-shadow: 0 1px 2px rgb(0 0 0 / .2); transition: transform .15s ease; }
@@ -83,10 +83,10 @@ textarea { position: relative; z-index: 1; width: 100%; height: 100%; min-width:
   .top-link { font-size: 10px; }
   textarea { padding-left: 12px; padding-right: 12px; font-size: 13px; }
   .cas-results { inset-inline: 6px; }
-  .cas-result-line { gap: 4px; font-size: 11px; }
+  .cas-result-line { gap: 4px; font-size: 14px; }
   .cas-result-bubble { max-width: min(62%, 300px); gap: 4px; padding-inline: 5px; }
   .cas-formula { max-width: 130px; }
-  .graph-toggle { font-size: 9px; }
+  .graph-toggle { font-size: 10px; }
   .hint:not(.error), .point-readback { display: none; }
   .splitter { cursor: row-resize; }
   .splitter::after { inset: -5px 0; }
