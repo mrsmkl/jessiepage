@@ -1,5 +1,7 @@
 import { ComputeEngine } from 'https://cdn.jsdelivr.net/npm/@cortex-js/compute-engine@0.119.0/+esm';
+import katex from 'https://cdn.jsdelivr.net/npm/katex@0.18.6/+esm';
 import { BUILTIN_EXAMPLES } from './examples.js';
+import { analyzeSource, drawCasGraphs } from './cas.js';
 
 const computeEngine = new ComputeEngine();
 
@@ -60,6 +62,8 @@ const points = document.getElementById('points');
 const hint = document.getElementById('hint');
 const errorMarker = document.getElementById('error-line-marker');
 const autocomplete = document.getElementById('autocomplete');
+const casResults = document.getElementById('cas-results');
+const casResultLines = document.getElementById('cas-result-lines');
 const layout = document.getElementById('layout');
 const splitter = document.getElementById('splitter');
 const pageSelect = document.getElementById('page-select');
@@ -76,7 +80,7 @@ const canvasFullscreen = document.getElementById('canvas-fullscreen');
 const STORAGE_KEY = 'jessiepage-state-v1';
 const DEFAULT_BBOX = [-6, 6, 6, -6];
 const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
-const BUILTIN_EXAMPLES_VERSION = 10;
+const BUILTIN_EXAMPLES_VERSION = 11;
 const INPUT_RENDER_MS = 80;
 const SAVE_IDLE_MS = 250;
 const ERROR_IDLE_MS = 700;
@@ -95,6 +99,11 @@ const AUTOCOMPLETE_WORDS = [
   ['slider', 'slider(', 'control'],
   ['functiongraph', 'functiongraph(', 'plot'],
   ['curve', 'curve(', 'plot'],
+  ['simplify', 'simplify(', 'CAS'],
+  ['expand', 'expand(', 'CAS'],
+  ['differentiate', 'differentiate(', 'CAS'],
+  ['solve', 'solve(', 'CAS'],
+  ['plot', 'plot(', 'CAS'],
   ['map', 'map (x) -> ', 'language'],
   ['sin', 'sin(', 'math'],
   ['cos', 'cos(', 'math'],
@@ -126,7 +135,7 @@ const boardOptions = {
 function setStatus(kind, text, title = text) { status.className = kind; status.textContent = text; status.title = title; }
 function newId() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
 function currentPage() { return state.pages.find((p) => p.id === state.currentPageId) || state.pages[0] || null; }
-function makePage(name, source) { return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice() }; }
+function makePage(name, source) { return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice(), casGraphs: [] }; }
 
 function saveState() {
   clearTimeout(saveTimer);
@@ -160,6 +169,8 @@ function updateProgramLink() {
   params.set('new', '1');
   params.set('name', currentPage()?.name || 'Linked graph');
   params.set('code', editor.value || '');
+  const graphKeys = currentPage()?.casGraphs || [];
+  if (graphKeys.length) params.set('graphs', graphKeys.join(','));
   programLink.href = `${location.origin}${location.pathname}${location.search}#${params.toString()}`;
 }
 
@@ -167,7 +178,9 @@ function linkedPageFromHash() {
   if (!location.hash || location.hash.length < 2) return null;
   const params = new URLSearchParams(location.hash.slice(1));
   if (params.get('new') !== '1' || !params.has('code')) return null;
-  return makePage((params.get('name') || 'Linked graph').slice(0, 60), params.get('code') || '');
+  const page = makePage((params.get('name') || 'Linked graph').slice(0, 60), params.get('code') || '');
+  page.casGraphs = (params.get('graphs') || '').split(',').filter(Boolean);
+  return page;
 }
 
 function consumeLinkedPageHash() { history.replaceState(null, '', `${location.pathname}${location.search}`); }
@@ -220,6 +233,70 @@ function rememberView() {
   if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) { page.bbox = bbox.slice(); saveState(); }
 }
 
+function enabledCasKeys() {
+  return new Set(currentPage()?.casGraphs || []);
+}
+
+function syncCasResultsScroll() {
+  casResults.scrollTop = editor.scrollTop;
+}
+
+function renderCasResults(analysis) {
+  const style = getComputedStyle(editor);
+  const lineHeight = Number.parseFloat(style.lineHeight) || 22;
+  const paddingTop = Number.parseFloat(style.paddingTop) || 0;
+  const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
+  const byLine = new Map(analysis.results.map((result) => [result.lineIndex, result]));
+  const selected = enabledCasKeys();
+  casResultLines.replaceChildren();
+  casResultLines.style.setProperty('--cas-line-height', `${lineHeight}px`);
+  casResultLines.style.paddingTop = `${paddingTop}px`;
+  casResultLines.style.paddingBottom = `${paddingBottom}px`;
+
+  analysis.lines.forEach((unused, lineIndex) => {
+    const row = document.createElement('div');
+    const result = byLine.get(lineIndex);
+    row.className = `cas-result-line${result ? ' has-result' : ''}${result?.error ? ' cas-error' : ''}`;
+    if (result?.error) {
+      row.textContent = result.error;
+      row.title = result.error;
+    } else if (result) {
+      const formula = document.createElement('span');
+      formula.className = 'cas-formula';
+      formula.title = result.latex;
+      katex.render(result.latex, formula, { throwOnError: false, displayMode: false, strict: false });
+      row.appendChild(formula);
+      if (result.graph) {
+        const label = document.createElement('label');
+        label.className = 'graph-toggle';
+        label.title = result.forceGraph ? 'Graph enabled by plot() in the source' : 'Show this result on the shared graph';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = result.forceGraph || selected.has(result.key);
+        input.disabled = result.forceGraph;
+        input.setAttribute('aria-label', 'Graph this result');
+        const switchShape = document.createElement('span');
+        switchShape.className = 'graph-switch';
+        const text = document.createElement('span');
+        text.textContent = 'Graph';
+        label.append(input, switchShape, text);
+        input.addEventListener('change', () => {
+          const page = currentPage();
+          if (!page) return;
+          const keys = new Set(page.casGraphs || []);
+          if (input.checked) keys.add(result.key); else keys.delete(result.key);
+          page.casGraphs = Array.from(keys);
+          saveState();
+          render(editor.value, page.bbox, true);
+        });
+        row.appendChild(label);
+      }
+    }
+    casResultLines.appendChild(row);
+  });
+  syncCasResultsScroll();
+}
+
 function validate(code) {
   let testBoard;
   try {
@@ -243,7 +320,7 @@ async function installBuiltinExamples(selectBasics = false) {
         const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
         if (previousHashes.includes(hash)) {
           try {
-            validate(example.source);
+            validate(analyzeSource(example.source, ComputeEngine).jessieSource);
             page.source = example.source;
             page.lastGoodSource = example.source;
           } catch (err) { console.warn(`Keeping previous example ${example.key}`, err); }
@@ -252,7 +329,7 @@ async function installBuiltinExamples(selectBasics = false) {
       continue;
     }
     try {
-      validate(example.source);
+      validate(analyzeSource(example.source, ComputeEngine).jessieSource);
       const page = makePage(example.name, example.source);
       page.builtinKey = example.key;
       page.bbox = example.bbox.slice();
@@ -343,10 +420,11 @@ function bindSimplePointSourceSync(code) {
   }
 }
 
-function makeBoard(code, bbox) {
+function makeBoard(code, bbox, casAnalysis = null) {
   if (board) JXG.JSXGraph.freeBoard(board);
   board = JXG.JSXGraph.initBoard('board', { ...boardOptions, boundingbox: Array.isArray(bbox) ? bbox : DEFAULT_BBOX });
   board.jc.parse(code);
+  if (casAnalysis) drawCasGraphs(board, casAnalysis.results, enabledCasKeys());
   board.on('update', updatePointReadback);
   board.on('boundingbox', rememberView);
   board.update();
@@ -355,14 +433,17 @@ function makeBoard(code, bbox) {
 }
 
 function render(code, bbox, showErrors = true) {
+  const casAnalysis = analyzeSource(code, ComputeEngine);
+  renderCasResults(casAnalysis);
   try {
-    validate(code);
-    makeBoard(code, bbox);
+    validate(casAnalysis.jessieSource);
+    makeBoard(casAnalysis.jessieSource, bbox, casAnalysis);
     const page = currentPage();
     if (page) { page.lastGoodSource = code; page.source = code; saveState(); }
     clearError();
     updateProgramLink();
-    setStatus('ok', 'saved');
+    const casErrors = casAnalysis.results.filter((result) => result.error).length;
+    setStatus(casErrors ? 'error' : 'ok', casErrors ? `${casErrors} CAS error${casErrors === 1 ? '' : 's'}` : 'saved');
     return true;
   } catch (err) {
     if (showErrors) {
@@ -415,7 +496,10 @@ function showCurrentPage() {
   if (!page) return;
   editor.value = page.source || '';
   if (!render(editor.value, page.bbox) && page.lastGoodSource && page.lastGoodSource !== page.source) {
-    try { makeBoard(page.lastGoodSource, page.bbox); } catch (err) { console.error(err); }
+    try {
+      const fallback = analyzeSource(page.lastGoodSource, ComputeEngine);
+      makeBoard(fallback.jessieSource, page.bbox, fallback);
+    } catch (err) { console.error(err); }
   }
   refreshPageControls();
 }
@@ -525,6 +609,7 @@ async function initialize() {
   // Repair literal HTML entities in known captions, including edited saved copies.
   // Replace only the exact original line; keep all surrounding user edits.
   for (const page of state.pages) {
+    if (!Array.isArray(page.casGraphs)) page.casGraphs = [];
     for (const fix of [{"key": "euclid-postulate-05", "before": "text(-9,-5.5,'Here α + β < 180°: the lines meet on the right.') <<display:'internal',fontSize:16>>;", "after": "text(-9,-5.5,'Here α + β < 180°: the lines meet on the right.') <<display:'html',fontSize:16>>;"}, {"key": "euclid-common-notion-05", "before": "text(-9,-4,'AB = AC + CB, with CB > 0; hence AB > AC.') <<display:'internal',fontSize:16>>;", "after": "text(-9,-4,'AB = AC + CB, with CB > 0; hence AB > AC.') <<display:'html',fontSize:16>>;"}]) {
       if (page.builtinKey !== fix.key) continue;
       for (const field of ['source', 'lastGoodSource']) {
@@ -638,7 +723,7 @@ document.addEventListener('fullscreenchange', updateFullscreenButtons);
 document.addEventListener('webkitfullscreenchange', updateFullscreenButtons);
 
 editor.addEventListener('input', processEditorInput);
-editor.addEventListener('scroll', positionErrorMarker);
+editor.addEventListener('scroll', () => { positionErrorMarker(); syncCasResultsScroll(); });
 editor.addEventListener('click', () => updateAutocomplete());
 editor.addEventListener('blur', () => setTimeout(() => {
   hideAutocomplete();

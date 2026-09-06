@@ -1,27 +1,34 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
-const [html, css, appSource, examplesSource] = await Promise.all([
+const [html, css, appSource, examplesSource, casSource] = await Promise.all([
   readFile('index.html', 'utf8'),
   readFile('styles.css', 'utf8'),
   readFile('app.js', 'utf8'),
-  readFile('examples.js', 'utf8')
+  readFile('examples.js', 'utf8'),
+  readFile('cas.js', 'utf8')
 ]);
 
 const styleTag = '<link rel="stylesheet" href="./styles.css" />';
 const scriptTag = '<script type="module" src="./app.js"></script>';
 const examplesImport = "import { BUILTIN_EXAMPLES } from './examples.js';";
+const casImport = "import { analyzeSource, drawCasGraphs } from './cas.js';";
 
 if (!html.includes(styleTag) || !html.includes(scriptTag)) {
   throw new Error('index.html is missing a bundle placeholder');
 }
-if (!appSource.includes(examplesImport)) {
-  throw new Error('app.js is missing its examples import');
+if (!appSource.includes(examplesImport) || !appSource.includes(casImport)) {
+  throw new Error('app.js is missing a local module import');
 }
 
 const examples = examplesSource.replace(/^export const BUILTIN_EXAMPLES = /, 'const BUILTIN_EXAMPLES = ');
 if (examples === examplesSource) throw new Error('examples.js has an unexpected export');
 
-const app = appSource.replace(examplesImport, () => examples.trimEnd());
+const cas = casSource.replace(/^export /gm, '');
+if (cas === casSource) throw new Error('cas.js has no exports to bundle');
+
+const app = appSource
+  .replace(examplesImport, () => examples.trimEnd())
+  .replace(casImport, () => cas.trimEnd());
 if (app.includes('</script>')) throw new Error('The bundled module contains a closing script tag');
 
 const bundle = html

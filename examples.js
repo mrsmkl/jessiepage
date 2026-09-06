@@ -33,38 +33,22 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
   { key: 'loop', name: 'Example · Programming', bbox: [-6,6,6,-6], source: `for (i = 0; i < 9; i = i + 1) {
   point(i - 4, 2 * sin(i)) << name: '', withLabel: false >>;
 }` },
-  { key: 'cas-simplify', name: 'CAS · Simplify', bbox: [-6,6,6,-6], source: `// Define the function once; the CAS result is directly graphable.
-expression = '(x+1)^2-(x^2+2*x)';
-result = simplify(expression);
-
-f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 4 >>;
-g = functiongraph(result) << strokeColor: '#2563eb', strokeWidth: 2, dash: 2 >>;
-text(-5, 5, 'simplify(' + expression + ') = ' + result) << fontSize: 17 >>;
-text(-5, 4.3, 'orange: input · blue dashed: simplified') << fontSize: 14 >>;`, previousSourceHash: '1d7f987a1cd670bac95e763b619eda6f425fba8498c4de448ff09f978d3ad272' },
-  { key: 'cas-expand', name: 'CAS · Expand', bbox: [-6,6,6,-6], source: `// Define the function once; the CAS result is directly graphable.
-expression = '(x+1)^3';
-result = expand(expression);
-
-f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 4 >>;
-g = functiongraph(result) << strokeColor: '#2563eb', strokeWidth: 2, dash: 2 >>;
-text(-5, 5, 'expand(' + expression + ') = ' + result) << fontSize: 17 >>;
-text(-5, 4.3, 'orange: input · blue dashed: expanded') << fontSize: 14 >>;` },
-  { key: 'cas-differentiate', name: 'CAS · Differentiate', bbox: [-6,6,6,-6], source: `// Define the function once, derive it, and graph both variables.
-expression = 'x^3+2*x^2-x+4';
-derivative = differentiate(expression, 'x');
-
-f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 3 >>;
-df = functiongraph(derivative) << strokeColor: '#2563eb', strokeWidth: 3 >>;
-text(-5, 5, "differentiate(" + expression + ", 'x') = " + derivative) << fontSize: 17 >>;
-text(-5, 4.3, "orange: f · blue: f'") << fontSize: 14 >>;`, previousSourceHash: '2238c1409676ca0c4996c03eb5bbe0b45ba515a682a3ee0a56da169e4a276743' },
-  { key: 'cas-solve', name: 'CAS · Solve to points', bbox: [-6,6,6,-6], source: `// Define the function once, solve it, graph it, and draw all roots at once.
-expression = 'x^2-5*x+6';
-roots = solve(expression + '=0', 'x');
-
-rootPoints = points(roots, 'R');
-f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 3 >>;
-text(-5, 5, "solve(" + expression + "=0, 'x') = [" + roots + ']') << fontSize: 17 >>;
-text(-5, 4.3, "points(roots, 'R') draws every real numeric solution") << fontSize: 14 >>;`, previousSourceHashes: ['550770f454f89141d5c196ad112534ace0cfa0f7eb55a32c74c1848324a02c4e', 'fafe34c1409b378eea49d313bd16ec0b28def2e27bb754988d9f8532b912c0f3'] }
+  { key: 'cas-simplify', name: 'CAS · Simplify', bbox: [-6,6,6,-6], source: `// Plain-text definitions share one CAS scope.
+f = (x+1)^2 - (x^2+2*x)
+simplify(f)
+a = 5`, previousSourceHashes: ['1d7f987a1cd670bac95e763b619eda6f425fba8498c4de448ff09f978d3ad272', 'ad75b581ce876f9bfc051e6ccde0f02ad928850b95ca7aa163d61bd64668bb5f'] },
+  { key: 'cas-expand', name: 'CAS · Expand', bbox: [-6,6,6,-6], source: `// Turn on either Graph switch to use the shared canvas.
+f = (x+1)^3
+expand(f)`, previousSourceHash: '929a7fdc2bf228e8e392ab46a664689608f05a855fd5e22f19fc58b90fcb7be4' },
+  { key: 'cas-differentiate', name: 'CAS · Differentiate', bbox: [-8,8,8,-8], source: `// f is defined once and reused by the next line.
+f = x^3 + 2*x^2 - x + 4
+differentiate(f, x)`, previousSourceHashes: ['2238c1409676ca0c4996c03eb5bbe0b45ba515a682a3ee0a56da169e4a276743', '08decb0d564946f18722e0ad386d8e43011235d4cc59a6078e688fabe0fded3e'] },
+  { key: 'cas-solve', name: 'CAS · Solve to points', bbox: [-6,6,6,-6], source: `// solve() uses the current definition and returns every solution.
+f = x^2 - 4
+solve(f, x)`, previousSourceHashes: ['550770f454f89141d5c196ad112534ace0cfa0f7eb55a32c74c1848324a02c4e', 'fafe34c1409b378eea49d313bd16ec0b28def2e27bb754988d9f8532b912c0f3', 'e7fb538bdff08b6985328e0602a98c4b85a53153ee9da0b3c632f2fb9ccc9e1b'] },
+  { key: 'cas-points', name: 'CAS · Point set', bbox: [-6,6,6,-6], source: `// A set of coordinate pairs is graphed together.
+samples = {(-3,2),(-1,-2),(1,3),(3,1)}
+samples` }
 ];
 
 // Standalone JessieCode diagrams, installed once as editable local pages.
