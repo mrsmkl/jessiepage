@@ -1,4 +1,4 @@
-import { ComputeEngine } from 'https://cdn.jsdelivr.net/npm/@cortex-js/compute-engine@0.119.0/+esm';
+import { ComputeEngine, compile } from 'https://cdn.jsdelivr.net/npm/@cortex-js/compute-engine@0.119.0/+esm';
 import katex from 'https://cdn.jsdelivr.net/npm/katex@0.18.6/+esm';
 import { BUILTIN_EXAMPLES } from './examples.js';
 import { analyzeSource, drawCasGraphs } from './cas.js';
@@ -246,7 +246,7 @@ function rememberView() {
   const page = currentPage();
   if (!page || !board) return;
   const bbox = board.getBoundingBox();
-  if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) { page.bbox = bbox.slice(); saveState(); }
+  if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) { page.bbox = bbox.slice(); queueSaveState(); }
 }
 
 function enabledCasKeys() {
@@ -444,7 +444,7 @@ function makeBoard(code, bbox, casAnalysis = null) {
   if (board) JXG.JSXGraph.freeBoard(board);
   board = JXG.JSXGraph.initBoard('board', { ...boardOptions, boundingbox: Array.isArray(bbox) ? bbox : DEFAULT_BBOX });
   board.jc.parse(code);
-  if (casAnalysis) drawCasGraphs(board, casAnalysis.results, enabledCasKeys());
+  if (casAnalysis) drawCasGraphs(board, casAnalysis.results, enabledCasKeys(), compile);
   board.on('update', updatePointReadback);
   board.on('boundingbox', rememberView);
   board.update();
