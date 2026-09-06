@@ -1,4 +1,4 @@
-import { ComputeEngine } from 'https://cdn.jsdelivr.net/npm/@cortex-js/compute-engine@0.119.0/+esm';
+import { ComputeEngine, compile } from 'https://cdn.jsdelivr.net/npm/@cortex-js/compute-engine@0.119.0/+esm';
 import katex from 'https://cdn.jsdelivr.net/npm/katex@0.18.6/+esm';
 import { BUILTIN_EXAMPLES } from './examples.js';
 import { analyzeSource, drawCasGraphs } from './cas.js';
@@ -80,7 +80,7 @@ const canvasFullscreen = document.getElementById('canvas-fullscreen');
 const STORAGE_KEY = 'jessiepage-state-v1';
 const DEFAULT_BBOX = [-6, 6, 6, -6];
 const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
-const BUILTIN_EXAMPLES_VERSION = 13;
+const BUILTIN_EXAMPLES_VERSION = 14;
 const INPUT_RENDER_MS = 80;
 const SAVE_IDLE_MS = 250;
 const ERROR_IDLE_MS = 700;
@@ -246,7 +246,7 @@ function rememberView() {
   const page = currentPage();
   if (!page || !board) return;
   const bbox = board.getBoundingBox();
-  if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) { page.bbox = bbox.slice(); saveState(); }
+  if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) { page.bbox = bbox.slice(); queueSaveState(); }
 }
 
 function enabledCasKeys() {
@@ -273,15 +273,18 @@ function renderCasResults(analysis) {
     const row = document.createElement('div');
     const result = byLine.get(lineIndex);
     row.className = `cas-result-line${result ? ' has-result' : ''}${result?.error ? ' cas-error' : ''}`;
+    const bubble = document.createElement('div');
+    bubble.className = 'cas-result-bubble';
     if (result?.error) {
-      row.textContent = result.error;
-      row.title = result.error;
+      bubble.textContent = result.error;
+      bubble.title = result.error;
+      row.appendChild(bubble);
     } else if (result) {
       const formula = document.createElement('span');
       formula.className = 'cas-formula';
       formula.title = result.latex;
       katex.render(result.latex, formula, { throwOnError: false, displayMode: false, strict: false });
-      row.appendChild(formula);
+      bubble.appendChild(formula);
       if (result.graph) {
         const label = document.createElement('label');
         label.className = 'graph-toggle';
@@ -305,8 +308,9 @@ function renderCasResults(analysis) {
           saveState();
           render(editor.value, page.bbox, true);
         });
-        row.appendChild(label);
+        bubble.appendChild(label);
       }
+      row.appendChild(bubble);
     }
     casResultLines.appendChild(row);
   });
@@ -440,7 +444,7 @@ function makeBoard(code, bbox, casAnalysis = null) {
   if (board) JXG.JSXGraph.freeBoard(board);
   board = JXG.JSXGraph.initBoard('board', { ...boardOptions, boundingbox: Array.isArray(bbox) ? bbox : DEFAULT_BBOX });
   board.jc.parse(code);
-  if (casAnalysis) drawCasGraphs(board, casAnalysis.results, enabledCasKeys());
+  if (casAnalysis) drawCasGraphs(board, casAnalysis.results, enabledCasKeys(), compile);
   board.on('update', updatePointReadback);
   board.on('boundingbox', rememberView);
   board.update();

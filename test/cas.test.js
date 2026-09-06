@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ComputeEngine } from '@cortex-js/compute-engine';
+import { ComputeEngine, compile } from '@cortex-js/compute-engine';
 import { analyzeSource, drawCasGraphs } from '../cas.js';
 import { BUILTIN_EXAMPLES } from '../examples.js';
 
@@ -53,7 +53,7 @@ test('function and derivative graph callbacks evaluate their own expressions', (
 differentiate(f, x)`);
   const board = new MockBoard();
 
-  drawCasGraphs(board, analysis.results, new Set(['name:f', 'line:1']));
+  drawCasGraphs(board, analysis.results, new Set(['name:f', 'line:1']), compile);
 
   assert.equal(board.created.length, 2);
   assert.deepEqual(board.created.map((object) => object.type), ['functiongraph', 'functiongraph']);
@@ -62,13 +62,40 @@ differentiate(f, x)`);
   assert.equal(board.created[0].attributes.strokeWidth, 3);
 });
 
+test('plain-text cosine and exponential expressions render and graph correctly', () => {
+  const analysis = successful(`f = cos(x)
+g = e^x`);
+  const board = new MockBoard();
+
+  assert.equal(resultAt(analysis, 0).latex, '\\cos(x)');
+  assert.equal(resultAt(analysis, 1).latex, '\\mathrm{e}^{x}');
+  drawCasGraphs(board, analysis.results, new Set(['name:f', 'name:g']), compile);
+  assert.equal(board.created[0].args[0](0), 1);
+  assert.ok(Math.abs(board.created[1].args[0](1) - Math.E) < 1e-12);
+});
+
+test('graph expressions compile once instead of substituting on every sample', () => {
+  const analysis = successful('f = x^3 + 2*x^2 - x + 4');
+  const board = new MockBoard();
+  let compilations = 0;
+
+  drawCasGraphs(board, analysis.results, new Set(['name:f']), (expression) => {
+    compilations += 1;
+    return compile(expression);
+  });
+  const evaluate = board.created[0].args[0];
+  for (let x = -50; x <= 50; x += 0.05) assert.ok(Number.isFinite(evaluate(x)));
+
+  assert.equal(compilations, 1);
+});
+
 test('several selected functions and point sets share one board', () => {
   const analysis = successful(`f = x^2
 samples = {(-2,4),(0,0),(2,4)}
 z = 3 + 2*i`);
   const board = new MockBoard();
 
-  drawCasGraphs(board, analysis.results, new Set(['name:f', 'name:samples', 'name:z']));
+  drawCasGraphs(board, analysis.results, new Set(['name:f', 'name:samples', 'name:z']), compile);
 
   assert.equal(board.created.filter((object) => object.type === 'functiongraph').length, 1);
   const points = board.created.filter((object) => object.type === 'point');
@@ -82,7 +109,7 @@ differentiate(f, x)
 plot(f)`);
   const board = new MockBoard();
 
-  drawCasGraphs(board, analysis.results, new Set());
+  drawCasGraphs(board, analysis.results, new Set(), compile);
 
   assert.equal(board.created.length, 1);
   assert.equal(board.created[0].type, 'functiongraph');
@@ -94,7 +121,7 @@ test('finite limits use a hollow point marker', () => {
 limit(f, x, 1)`);
   const board = new MockBoard();
 
-  drawCasGraphs(board, analysis.results, new Set(['line:1']));
+  drawCasGraphs(board, analysis.results, new Set(['line:1']), compile);
 
   assert.deepEqual(board.created[0].args, [1, 2]);
   assert.equal(board.created[0].attributes.fillColor, '#fff');
@@ -155,7 +182,7 @@ a = 5`);
 
 test('every built-in CAS page evaluates without a CAS error', () => {
   const examples = BUILTIN_EXAMPLES.filter((example) => example.key.startsWith('cas-'));
-  assert.equal(examples.length, 20);
+  assert.equal(examples.length, 21);
 
   for (const example of examples) {
     const errors = analyze(example.source).results.filter((result) => result.error);
