@@ -304,7 +304,7 @@ export function analyzeSource(source, ComputeEngine) {
   return { source, lines, jessieSource: jessieLines.join('\n'), results };
 }
 
-export function drawCasGraphs(board, results, enabledKeys) {
+export function drawCasGraphs(board, results, enabledKeys, compileExpression) {
   const colors = ['#2563eb', '#d97706', '#7c3aed', '#0f8b6d', '#c2416c', '#475569'];
   let colorIndex = 0;
   results.forEach((result) => {
@@ -322,9 +322,14 @@ export function drawCasGraphs(board, results, enabledKeys) {
       return;
     }
     const { expression, variable } = result.graph;
+    let compiledRun = null;
+    try {
+      const compiled = compileExpression?.(expression);
+      if (compiled?.success && typeof compiled.run === 'function') compiledRun = compiled.run;
+    } catch { /* Fall back to symbolic substitution for unsupported expressions. */ }
     board.create('functiongraph', [(x) => {
       try {
-        const value = expression.subs({ [variable]: x }).N().valueOf();
+        const value = compiledRun ? compiledRun({ [variable]: x }) : expression.subs({ [variable]: x }).N().valueOf();
         return typeof value === 'number' && Number.isFinite(value) ? value : NaN;
       } catch { return NaN; }
     }], { strokeColor: color, strokeWidth: 3 });
