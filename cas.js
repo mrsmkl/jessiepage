@@ -46,6 +46,7 @@ function callFromLine(source) {
 function casSourceFromLine(line) {
   const source = line.trim();
   if (!source || source.startsWith('//')) return null;
+  if (/^[{}]$/.test(source)) return null;
   if (/^(?:\$board|for|if|while)\b/.test(source) || /<<|\.glide\s*\(/.test(source)) return null;
   const terminatedAssignment = source.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)([^;]+?)\s*;\s*(?:\/\/.*)?$/);
   if (terminatedAssignment && !JESSIE_CALL.test(source) && !/['"]/.test(source)) {
@@ -380,7 +381,8 @@ export function analyzeSource(source, ComputeEngine) {
   lines.forEach((line, lineIndex) => {
     const casSource = casSourceFromLine(line);
     if (casSource === null) {
-      geometryDefinitionFromLine(line, engine, definitions);
+      try { geometryDefinitionFromLine(line, engine, definitions); }
+      catch { /* Dynamic Jessie constructions do not need a CAS representation. */ }
       return;
     }
     jessieLines[lineIndex] = '';
