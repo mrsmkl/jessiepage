@@ -33,38 +33,77 @@ c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
   { key: 'loop', name: 'Example · Programming', bbox: [-6,6,6,-6], source: `for (i = 0; i < 9; i = i + 1) {
   point(i - 4, 2 * sin(i)) << name: '', withLabel: false >>;
 }` },
-  { key: 'cas-simplify', name: 'CAS · Simplify', bbox: [-6,6,6,-6], source: `// Define the function once; the CAS result is directly graphable.
-expression = '(x+1)^2-(x^2+2*x)';
-result = simplify(expression);
-
-f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 4 >>;
-g = functiongraph(result) << strokeColor: '#2563eb', strokeWidth: 2, dash: 2 >>;
-text(-5, 5, 'simplify(' + expression + ') = ' + result) << fontSize: 17 >>;
-text(-5, 4.3, 'orange: input · blue dashed: simplified') << fontSize: 14 >>;`, previousSourceHash: '1d7f987a1cd670bac95e763b619eda6f425fba8498c4de448ff09f978d3ad272' },
-  { key: 'cas-expand', name: 'CAS · Expand', bbox: [-6,6,6,-6], source: `// Define the function once; the CAS result is directly graphable.
-expression = '(x+1)^3';
-result = expand(expression);
-
-f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 4 >>;
-g = functiongraph(result) << strokeColor: '#2563eb', strokeWidth: 2, dash: 2 >>;
-text(-5, 5, 'expand(' + expression + ') = ' + result) << fontSize: 17 >>;
-text(-5, 4.3, 'orange: input · blue dashed: expanded') << fontSize: 14 >>;` },
-  { key: 'cas-differentiate', name: 'CAS · Differentiate', bbox: [-6,6,6,-6], source: `// Define the function once, derive it, and graph both variables.
-expression = 'x^3+2*x^2-x+4';
-derivative = differentiate(expression, 'x');
-
-f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 3 >>;
-df = functiongraph(derivative) << strokeColor: '#2563eb', strokeWidth: 3 >>;
-text(-5, 5, "differentiate(" + expression + ", 'x') = " + derivative) << fontSize: 17 >>;
-text(-5, 4.3, "orange: f · blue: f'") << fontSize: 14 >>;`, previousSourceHash: '2238c1409676ca0c4996c03eb5bbe0b45ba515a682a3ee0a56da169e4a276743' },
-  { key: 'cas-solve', name: 'CAS · Solve to points', bbox: [-6,6,6,-6], source: `// Define the function once, solve it, graph it, and draw all roots at once.
-expression = 'x^2-5*x+6';
-roots = solve(expression + '=0', 'x');
-
-rootPoints = points(roots, 'R');
-f = functiongraph(expression) << strokeColor: '#d97706', strokeWidth: 3 >>;
-text(-5, 5, "solve(" + expression + "=0, 'x') = [" + roots + ']') << fontSize: 17 >>;
-text(-5, 4.3, "points(roots, 'R') draws every real numeric solution") << fontSize: 14 >>;`, previousSourceHashes: ['550770f454f89141d5c196ad112534ace0cfa0f7eb55a32c74c1848324a02c4e', 'fafe34c1409b378eea49d313bd16ec0b28def2e27bb754988d9f8532b912c0f3'] }
+  { key: 'cas-simplify', name: 'CAS · Simplify', bbox: [-6,6,6,-6], source: `// Plain-text definitions share one CAS scope.
+f = (x+1)^2 - (x^2+2*x)
+simplify(f)
+a = 5`, previousSourceHashes: ['1d7f987a1cd670bac95e763b619eda6f425fba8498c4de448ff09f978d3ad272', 'ad75b581ce876f9bfc051e6ccde0f02ad928850b95ca7aa163d61bd64668bb5f'] },
+  { key: 'cas-expand', name: 'CAS · Expand', bbox: [-6,6,6,-6], source: `// Turn on either Graph switch to use the shared canvas.
+f = (x+1)^3
+expand(f)`, previousSourceHash: '929a7fdc2bf228e8e392ab46a664689608f05a855fd5e22f19fc58b90fcb7be4' },
+  { key: 'cas-differentiate', name: 'CAS · Differentiate', bbox: [-8,8,8,-8], source: `// f is defined once and reused by the next line.
+f = x^3 + 2*x^2 - x + 4
+differentiate(f, x)`, previousSourceHashes: ['2238c1409676ca0c4996c03eb5bbe0b45ba515a682a3ee0a56da169e4a276743', '08decb0d564946f18722e0ad386d8e43011235d4cc59a6078e688fabe0fded3e'] },
+  { key: 'cas-solve', name: 'CAS · Solve to points', bbox: [-6,6,6,-6], source: `// solve() uses the current definition and returns every solution.
+f = x^2 - 4
+solve(f, x)`, previousSourceHashes: ['550770f454f89141d5c196ad112534ace0cfa0f7eb55a32c74c1848324a02c4e', 'fafe34c1409b378eea49d313bd16ec0b28def2e27bb754988d9f8532b912c0f3', 'e7fb538bdff08b6985328e0602a98c4b85a53153ee9da0b3c632f2fb9ccc9e1b'] },
+  { key: 'cas-points', name: 'CAS · Point set', bbox: [-6,6,6,-6], source: `// A set of coordinate pairs is graphed together.
+samples = {(-3,2),(-1,-2),(1,3),(3,1)}
+samples` },
+  { key: 'cas-factor', name: 'CAS · Factor', bbox: [-5,8,5,-8], source: `// Factor a polynomial without redefining it.
+f = x^3 - 6*x^2 + 11*x - 6
+factor(f, x)` },
+  { key: 'cas-together', name: 'CAS · Together', bbox: [-6,8,6,-8], source: `// Combine a sum of rational expressions.
+f = 1/x + 1/(x+1)
+together(f)` },
+  { key: 'cas-evaluate', name: 'CAS · Evaluate exactly', bbox: [-6,6,6,-6], source: `// Exact arithmetic stays exact where possible.
+a = 2^{10} - 1
+evaluate(a)
+evaluate(1/3 + 1/6)` },
+  { key: 'cas-numeric', name: 'CAS · Numeric approximation', bbox: [-6,6,6,-6], source: `// The optional second argument controls precision.
+r = 2^{1/2}
+numeric(r)
+numeric(r, 30)` },
+  { key: 'cas-substitute', name: 'CAS · Substitute', bbox: [-6,8,6,-8], source: `// The result can be graphed as a point on f.
+f = x^2 - 4
+substitute(f, x, 3)
+substitute(f, x, -2)` },
+  { key: 'cas-integrate', name: 'CAS · Integrate', bbox: [-5,8,5,-8], source: `// Indefinite results are graphable; definite results are scalars.
+f = x^2
+integrate(f, x)
+integrate(f, x, 0, 2)` },
+  { key: 'cas-limit', name: 'CAS · Limit', bbox: [-6,6,6,-6], source: `// The removable hole has the limiting value 2.
+f = (x^2 - 1)/(x - 1)
+limit(f, x, 1)` },
+  { key: 'cas-complex', name: 'CAS · Complex plane', bbox: [-7,7,7,-7], source: `// Complex results use (real, imaginary) on the shared graph.
+z = 3 + 2*i
+w = (1-i)*z
+z
+w` },
+  { key: 'cas-determinant', name: 'CAS · Matrix determinant', bbox: [-6,6,6,-6], source: `// Matrices render as results but are not mistaken for point sets.
+A = [[1,2],[3,4]]
+determinant(A)` },
+  { key: 'cas-inverse', name: 'CAS · Matrix inverse', bbox: [-6,6,6,-6], source: `// Reuse one matrix definition.
+A = [[1,2],[3,4]]
+inverse(A)` },
+  { key: 'cas-transpose', name: 'CAS · Matrix transpose', bbox: [-6,6,6,-6], source: `// Transpose rows and columns.
+A = [[1,2,3],[4,5,6]]
+transpose(A)` },
+  { key: 'cas-eigenvalues', name: 'CAS · Matrix eigenvalues', bbox: [-6,6,6,-6], source: `// CortexJS computes the eigenvalues from the shared matrix.
+A = [[2,1],[1,2]]
+eigenvalues(A)` },
+  { key: 'cas-range', name: 'CAS · Range', bbox: [-6,6,6,-6], source: `// range() includes the end value when the step reaches it.
+ascending = range(-3, 3)
+descending = range(3, -3, -2)` },
+  { key: 'cas-sampled-points', name: 'CAS · Sampled points', bbox: [-6,8,6,-8], source: `// Sample a single function definition and graph all paired points together.
+f = x^2 - 4
+xs = range(-3, 3)
+ys = map(f, xs)
+samples = zip(xs, ys)` },
+  { key: 'cas-assumptions', name: 'CAS · Assumptions', bbox: [-6,6,6,-6], source: `// Assumptions affect every later line until forget() clears them.
+assume(x > 0)
+simplify(\\sqrt{x^2})
+forget(x)
+simplify(\\sqrt{x^2})` }
 ];
 
 // Standalone JessieCode diagrams, installed once as editable local pages.

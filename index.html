@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>JessiePage</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.6/dist/katex.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
   <link rel="stylesheet" href="./styles.css" />
 </head>
@@ -22,9 +23,14 @@
         <div id="status">loading…</div>
       </div>
       <div class="editor-wrap">
-        <div id="error-line-marker" aria-hidden="true"></div>
-        <textarea id="editor" spellcheck="false" aria-label="JessieCode editor"></textarea>
-        <div id="autocomplete" class="autocomplete" role="listbox" aria-label="Autocomplete suggestions"></div>
+        <div class="source-editor">
+          <div id="error-line-marker" aria-hidden="true"></div>
+          <textarea id="editor" wrap="off" spellcheck="false" aria-label="JessieCode and CAS editor"></textarea>
+          <div id="autocomplete" class="autocomplete" role="listbox" aria-label="Autocomplete suggestions"></div>
+        </div>
+        <div id="cas-results" class="cas-results" aria-label="Live CAS results">
+          <div id="cas-result-lines" class="cas-result-lines"></div>
+        </div>
       </div>
       <div id="hint" class="hint">Autosaved locally · drag canvas to pan · use board controls or wheel/pinch to zoom · drag simple points to edit source</div>
       <div class="point-readback"><div class="label">Points</div><pre id="points">—</pre></div>
