@@ -137,6 +137,56 @@ product(k, k + 1, 1, 4)`);
   assert.match(resultAt(analysis, 1).error, /variable name/);
 });
 
+test('constant definitions are shared with JessieCode in either text style', () => {
+  const analysis = successful(`scale = 2
+offset = 1;
+height = scale + offset
+A = point(-scale, offset);
+B = point(scale, height);
+segment(A, B);
+f = x^2 + height`);
+
+  assert.equal(resultAt(analysis, 0).latex, '2');
+  assert.equal(resultAt(analysis, 1).latex, '1');
+  assert.equal(resultAt(analysis, 2).latex, '3');
+  assert.equal(resultAt(analysis, 6).latex, 'x^2+3');
+  assert.equal(analysis.jessieSource, `scale = 2;
+offset = 1;
+height = 3;
+A = point(-scale, offset);
+B = point(scale, height);
+segment(A, B);
+`);
+});
+
+test('numeric collections are shared but symbolic functions remain CAS-only', () => {
+  const analysis = successful(`samples = {(1,2),(3,4)}
+points(samples);
+f = x^2 - 1`);
+
+  assert.equal(analysis.jessieSource, `samples = [[1,2],[3,4]];
+points(samples);
+`);
+  assert.ok(resultAt(analysis, 2).graph);
+});
+
+test('Jessie points and geometric carriers are available to later CAS lines', () => {
+  const analysis = successful(`A = point(-2, 0);
+B = point(2, 2);
+carrier = line(A, B);
+solve(carrier, y)
+c = circle(A, 3);
+solve(c, y)
+curve = functiongraph('x^2 - 1');
+solve(curve, y)`);
+
+  assert.equal(resultAt(analysis, 3).latex, '\\left\\{\\frac{x}{2}+1\\right\\}');
+  assert.match(resultAt(analysis, 5).latex, /-x\^2-4x\+5/);
+  assert.equal(resultAt(analysis, 7).latex, '\\left\\{x^2-1\\right\\}');
+  assert.match(analysis.jessieSource, /carrier = line\(A, B\);/);
+  assert.match(analysis.jessieSource, /c = circle\(A, 3\);/);
+});
+
 test('graph expressions compile once instead of substituting on every sample', () => {
   const analysis = successful('f = x^3 + 2*x^2 - x + 4');
   const board = new MockBoard();
@@ -245,7 +295,7 @@ a = 5`);
 
 test('every built-in CAS page evaluates without a CAS error', () => {
   const examples = BUILTIN_EXAMPLES.filter((example) => example.key.startsWith('cas-'));
-  assert.equal(examples.length, 24);
+  assert.equal(examples.length, 25);
 
   for (const example of examples) {
     const errors = analyze(example.source).results.filter((result) => result.error);
