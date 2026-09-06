@@ -88,6 +88,20 @@ f*g`);
   assert.ok(Math.abs(board.created[0].args[0](1) - Math.cos(1) * Math.E) < 1e-12);
 });
 
+test('LaTeX-style assignments, composition and standalone lines are CAS input', () => {
+  const source = String.raw`f = \frac{x^2}{2}
+g = \sin(x)
+f + g
+\cos(x)`;
+  const analysis = successful(source);
+
+  assert.equal(analysis.jessieSource, '\n\n\n');
+  assert.equal(resultAt(analysis, 0).latex, '\\frac{x^2}{2}');
+  assert.equal(resultAt(analysis, 2).latex, '\\frac{x^2}{2}+\\sin(x)');
+  assert.equal(resultAt(analysis, 3).latex, '\\cos(x)');
+  assert.ok(resultAt(analysis, 3).graph);
+});
+
 test('graph expressions compile once instead of substituting on every sample', () => {
   const analysis = successful('f = x^3 + 2*x^2 - x + 4');
   const board = new MockBoard();
@@ -196,7 +210,7 @@ a = 5`);
 
 test('every built-in CAS page evaluates without a CAS error', () => {
   const examples = BUILTIN_EXAMPLES.filter((example) => example.key.startsWith('cas-'));
-  assert.equal(examples.length, 21);
+  assert.equal(examples.length, 22);
 
   for (const example of examples) {
     const errors = analyze(example.source).results.filter((result) => result.error);
