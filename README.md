@@ -6,6 +6,8 @@ CAS results are rendered beside their source lines. The source remains a continu
 
 **Live page:** <https://mrsmkl.github.io/jessiepage/>
 
+**User manual:** [`output/pdf/jessiepage-user-manual.pdf`](output/pdf/jessiepage-user-manual.pdf) (TeX source is included beside it.)
+
 ## What it includes
 
 - Live JessieCode geometry with pan, wheel/pinch zoom, resizing, and fullscreen controls
