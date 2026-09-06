@@ -362,6 +362,24 @@ function validate(code) {
   } finally { if (testBoard) JXG.JSXGraph.freeBoard(testBoard); }
 }
 
+function validateAllBuiltinPages() {
+  const failures = [];
+  for (const example of BUILTIN_EXAMPLES) {
+    try {
+      const analysis = analyzeSource(example.source, ComputeEngine);
+      const casErrors = analysis.results.filter((result) => result.error);
+      if (casErrors.length) throw new Error(casErrors.map((result) => result.error).join('; '));
+      validate(analysis.jessieSource);
+    } catch (error) { failures.push(`${example.key}: ${error?.message || error}`); }
+  }
+  document.documentElement.dataset.builtinValidation = failures.length ? 'failed' : 'ok';
+  document.documentElement.dataset.builtinCount = String(BUILTIN_EXAMPLES.length);
+  if (failures.length) {
+    document.documentElement.dataset.builtinFailures = failures.map((failure) => failure.split(':')[0]).join(',');
+    console.error('Built-in validation failed', failures);
+  }
+}
+
 async function installBuiltinExamples(selectBasics = false) {
   if ((state.builtinExamplesVersion || 0) >= BUILTIN_EXAMPLES_VERSION) return;
   const existing = new Set(state.pages.map((p) => p.builtinKey).filter(Boolean));
@@ -651,6 +669,10 @@ function acceptAutocomplete(index = autocompleteIndex) {
 }
 
 async function initialize() {
+  if (new URLSearchParams(location.search).has('validate-builtins')) {
+    validateAllBuiltinPages();
+    return;
+  }
   const hadState = loadState();
   if (!hadState) {
     let source = '// New construction\nA = point(-2, 0);\nB = point(2, 0);\nline(A, B);\n';
