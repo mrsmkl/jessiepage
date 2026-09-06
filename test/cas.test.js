@@ -302,3 +302,18 @@ test('every built-in CAS page evaluates without a CAS error', () => {
     assert.deepEqual(errors, [], example.key);
   }
 });
+
+test('every built-in page has valid metadata and passes CAS source analysis', () => {
+  assert.equal(BUILTIN_EXAMPLES.length, 90);
+  assert.equal(new Set(BUILTIN_EXAMPLES.map((example) => example.key)).size, BUILTIN_EXAMPLES.length);
+
+  for (const example of BUILTIN_EXAMPLES) {
+    assert.ok(example.key, 'missing key');
+    assert.ok(example.name, `${example.key}: missing name`);
+    assert.equal(example.bbox.length, 4, `${example.key}: invalid bounding box`);
+    assert.ok(example.bbox.every(Number.isFinite), `${example.key}: non-numeric bounding box`);
+    assert.ok(example.source.trim(), `${example.key}: empty source`);
+    const errors = analyze(example.source).results.filter((result) => result.error);
+    assert.deepEqual(errors, [], example.key);
+  }
+});
