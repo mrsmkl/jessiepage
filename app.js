@@ -9,6 +9,7 @@ import {
   simplePointNames,
   simpleTextPositions
 } from './readback.js';
+import { mergePages, savedPixelSize, touchPage } from './state.js';
 
 const computeEngine = new ComputeEngine();
 
@@ -161,12 +162,18 @@ const boardOptions = {
 function setStatus(kind, text, title = text) { status.className = kind; status.textContent = text; status.title = title; }
 function newId() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
 function currentPage() { return state.pages.find((p) => p.id === state.currentPageId) || state.pages[0] || null; }
-function makePage(name, source) { return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice(), casGraphs: [] }; }
+function makePage(name, source) {
+  return touchPage({ id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice(), casGraphs: [] });
+}
 
 function saveState() {
   clearTimeout(saveTimer);
   saveTimer = null;
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (Array.isArray(stored?.pages)) state.pages = mergePages(state.pages, stored.pages);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
   catch (err) { console.warn(err); setStatus('error', 'local save failed'); }
 }
 
@@ -185,6 +192,7 @@ function loadState() {
     const parsed = JSON.parse(raw);
     if (!parsed || !Array.isArray(parsed.pages) || !parsed.pages.length) return false;
     state = parsed;
+    state.pages.forEach((page) => { page.updatedAt = Number(page.updatedAt) || 0; });
     if (!state.pages.some((p) => p.id === state.currentPageId)) state.currentPageId = state.pages[0].id;
     return true;
   } catch (err) { console.warn(err); return false; }
@@ -249,6 +257,7 @@ function rememberSource(source) {
   const page = currentPage();
   if (!page) return;
   page.source = source;
+  touchPage(page);
   queueSaveState();
 }
 
@@ -256,7 +265,11 @@ function rememberView() {
   const page = currentPage();
   if (!page || !board) return;
   const bbox = board.getBoundingBox();
-  if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) { page.bbox = bbox.slice(); queueSaveState(); }
+  if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) {
+    page.bbox = bbox.slice();
+    touchPage(page);
+    queueSaveState();
+  }
 }
 
 function enabledCasKeys() {
@@ -346,6 +359,7 @@ function renderCasResults(analysis) {
           const keys = new Set(page.casGraphs || []);
           if (input.checked) keys.add(result.key); else keys.delete(result.key);
           page.casGraphs = Array.from(keys);
+          touchPage(page);
           saveState();
           render(editor.value, page.bbox, true);
         });
@@ -403,6 +417,7 @@ async function installBuiltinExamples(selectBasics = false) {
             validate(analyzeSource(example.source, ComputeEngine).jessieSource);
             page.source = example.source;
             page.lastGoodSource = example.source;
+            touchPage(page);
           } catch (err) { console.warn(`Keeping previous example ${example.key}`, err); }
         }
       }
@@ -491,12 +506,16 @@ function bindSimplePointSourceSync(code) {
 }
 
 function bindSimpleTextSourceSync(code, textObjects) {
+  const remaining = textObjects.slice();
   for (const position of simpleTextPositions(code)) {
-    const textObject = textObjects[position.objectIndex];
-    if (!textObject) continue;
+    const objectIndex = remaining.findIndex((candidate) =>
+      Math.abs(candidate.X() - position.x) < 1e-9 && Math.abs(candidate.Y() - position.y) < 1e-9
+    );
+    if (objectIndex < 0) continue;
+    const [textObject] = remaining.splice(objectIndex, 1);
     const sync = () => applyReadback(replaceSimpleTextCoordinates(
       editor.value,
-      position.lineIndex,
+      position,
       textObject.X(),
       textObject.Y()
     ));
@@ -513,7 +532,8 @@ function makeBoard(code, bbox, casAnalysis = null) {
   board = JXG.JSXGraph.initBoard('board', { ...boardOptions, boundingbox: Array.isArray(bbox) ? bbox : DEFAULT_BBOX });
   board.jc.parse(code);
   const sourceTexts = board.objectsList.filter((element) =>
-    element?.elType === 'text' && typeof element.X === 'function' && typeof element.Y === 'function'
+    element?.elType === 'text' && element !== board.infobox
+      && typeof element.X === 'function' && typeof element.Y === 'function'
   );
   if (casAnalysis) drawCasGraphs(board, casAnalysis.results, enabledCasKeys(), compile);
   board.on('update', updatePointReadback);
@@ -531,7 +551,12 @@ function render(code, bbox, showErrors = true) {
     validate(casAnalysis.jessieSource);
     makeBoard(casAnalysis.jessieSource, bbox, casAnalysis);
     const page = currentPage();
-    if (page) { page.lastGoodSource = code; page.source = code; saveState(); }
+    if (page) {
+      page.lastGoodSource = code;
+      page.source = code;
+      touchPage(page);
+      saveState();
+    }
     clearError();
     updateProgramLink();
     const casErrors = casAnalysis.results.filter((result) => result.error).length;
@@ -781,6 +806,7 @@ pageName.addEventListener('input', () => {
   const page = currentPage();
   if (!page) return;
   page.name = pageName.value || 'Untitled';
+  touchPage(page);
   saveState();
   const option = pageSelect.querySelector(`option[value="${CSS.escape(page.id)}"]`);
   if (option) option.textContent = page.name;
@@ -790,6 +816,7 @@ pageName.addEventListener('blur', () => {
   const page = currentPage();
   if (!page) return;
   page.name = pageName.value.trim() || 'Untitled';
+  touchPage(page);
   pageName.value = page.name;
   saveState();
   refreshPageControls();
@@ -847,9 +874,9 @@ editor.addEventListener('keydown', (event) => {
   }
 });
 
-const savedWidth = Number(localStorage.getItem('jessiepage-editor-width'));
-const savedHeight = Number(localStorage.getItem('jessiepage-editor-height'));
-if (Number.isFinite(savedWidth) && savedWidth >= 0) document.documentElement.style.setProperty('--editor-width', `${savedWidth}px`);
-if (Number.isFinite(savedHeight) && savedHeight >= 43) document.documentElement.style.setProperty('--editor-height', `${savedHeight}px`);
+const savedWidth = savedPixelSize(localStorage.getItem('jessiepage-editor-width'), 0);
+const savedHeight = savedPixelSize(localStorage.getItem('jessiepage-editor-height'), 43);
+if (savedWidth !== null) document.documentElement.style.setProperty('--editor-width', `${savedWidth}px`);
+if (savedHeight !== null) document.documentElement.style.setProperty('--editor-height', `${savedHeight}px`);
 
 initialize();

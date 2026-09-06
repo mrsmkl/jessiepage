@@ -133,7 +133,7 @@ textarea { position: relative; z-index: 1; width: 100%; height: 100%; min-width:
           <div id="cas-result-lines" class="cas-result-lines"></div>
         </div>
       </div>
-      <div id="hint" class="hint">Autosaved locally · drag canvas to pan · use board controls or wheel/pinch to zoom · drag simple points to edit source</div>
+      <div id="hint" class="hint">Autosaved locally · drag canvas to pan · use board controls or wheel/pinch to zoom · drag simple points or text to edit source</div>
       <div class="point-readback"><div class="label">Points</div><pre id="points">—</pre></div>
     </section>
     <div id="splitter" class="splitter" role="separator" aria-label="Resize editor and canvas"></div>
@@ -999,8 +999,60 @@ const CAS_CALLS = new Set([
 const JESSIE_CALL = /\b(?:point|line|segment|circle|polygon|midpoint|intersection|perpendicular|circumcircle|glider|tangent|slider|functiongraph|curve|text|angle|map|V)\s*\(/;
 const PLAIN_MATH_FUNCTION = /(^|[^\\A-Za-z])(arcsinh|arccosh|arctanh|arcsin|arccos|arctan|sinh|cosh|tanh|sqrt|floor|ceil|sin|cos|tan|cot|sec|csc|log|ln|exp|abs)\s*\(/g;
 
+function normalizePlainPowers(source) {
+  let result = '';
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (character !== '^' || source[index + 1] === '{') { result += character; continue; }
+    let cursor = index + 1;
+    if (source[cursor] === '(') {
+      let depth = 1;
+      let end = cursor + 1;
+      while (end < source.length && depth) {
+        if (source[end] === '(') depth += 1;
+        else if (source[end] === ')') depth -= 1;
+        end += 1;
+      }
+      if (!depth) {
+        result += `^{${source.slice(cursor + 1, end - 1)}}`;
+        index = end - 1;
+        continue;
+      }
+    }
+    if (source[cursor] === '\\') {
+      const command = source.slice(cursor).match(/^\\[A-Za-z]+/);
+      const open = command ? cursor + command[0].length : -1;
+      if (command && source[open] === '(') {
+        let depth = 1;
+        let end = open + 1;
+        while (end < source.length && depth) {
+          if (source[end] === '(') depth += 1;
+          else if (source[end] === ')') depth -= 1;
+          end += 1;
+        }
+        if (!depth) {
+          result += `^{${source.slice(cursor, end)}}`;
+          index = end - 1;
+          continue;
+        }
+      }
+    }
+    const match = source.slice(cursor).match(/^[-+]?(?:(?:\d+(?:\.\d*)?|\.\d+)|[A-Za-z_$][\w$]*)/);
+    if (match) {
+      result += `^{${match[0]}}`;
+      index += match[0].length;
+    } else result += character;
+  }
+  return result;
+}
+
 function normalizeMathSource(source) {
-  return source.replace(PLAIN_MATH_FUNCTION, (match, prefix, name) => `${prefix}\\${name}(`);
+  const named = source
+    .replace(PLAIN_MATH_FUNCTION, (match, prefix, name) => `${prefix}\\${name}(`)
+    .replace(/(^|[^\\A-Za-z])pi(?=$|[^A-Za-z])/gi, '$1\\pi')
+    .replace(/(^|[^\\A-Za-z])true(?=$|[^A-Za-z])/gi, '$1\\mathrm{True}')
+    .replace(/(^|[^\\A-Za-z])false(?=$|[^A-Za-z])/gi, '$1\\mathrm{False}');
+  return normalizePlainPowers(named);
 }
 
 function displayLatex(latex) {
@@ -1042,7 +1094,7 @@ function casSourceFromLine(line) {
   if (/^(?:\$board|for|if|while)\b/.test(source) || /<<|\.glide\s*\(/.test(source)) return null;
   const terminatedAssignment = source.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)([^;]+?)\s*;\s*(?:\/\/.*)?$/);
   const terminatedBody = terminatedAssignment?.[2] || '';
-  if (terminatedAssignment && /[\d+\-*/^()]/.test(terminatedBody) && !/[\[\]{}]/.test(terminatedBody)
+  if (terminatedAssignment && terminatedBody.trim() && !/[\[\]{}]/.test(terminatedBody)
       && !JESSIE_CALL.test(source) && !/['"]/.test(source)) {
     return `${terminatedAssignment[1]} = ${terminatedAssignment[2].trim()}`;
   }
@@ -1093,6 +1145,11 @@ function pointValues(expression, engine) {
   const json = expression.json;
   if (!Array.isArray(json)) return [];
   const [operator, ...items] = json;
+  if (['Tuple', 'Pair'].includes(operator) && items.length === 2) {
+    const x = numberValue(engine.box(items[0]));
+    const y = numberValue(engine.box(items[1]));
+    if (x !== null && y !== null) return [[x, y]];
+  }
   const collection = ['List', 'Set', 'Tuple'].includes(operator) ? items : [];
   if (!collection.length) return [];
 
@@ -1117,7 +1174,7 @@ function jessieValue(expression, engine) {
 }
 
 function geometryDefinitionFromLine(line, engine, definitions) {
-  const match = line.trim().match(/^([A-Za-z_$][\w$]*)\s*=\s*(point|line|segment|circle|functiongraph)\s*\(([\s\S]*?)\)\s*(?:<<[\s\S]*>>)?\s*;?\s*$/i);
+  const match = line.trim().match(/^([A-Za-z_$][\w$]*)\s*=\s*(point|line|segment|circle|functiongraph)\s*\(([\s\S]*?)\)\s*(?:<<[\s\S]*>>)?\s*;?\s*(?:\/\/.*)?$/i);
   if (!match) return;
   const [, name, rawKind, rawArguments] = match;
   const kind = rawKind.toLowerCase();
@@ -1176,15 +1233,27 @@ function graphFor(expression, engine, preferredVariable = '') {
   const variables = Array.from(expression.unknowns || expression.freeVariables || []);
   if (variables.length !== 1) return null;
   const variable = preferredVariable || variables[0];
-  const hasNumericSample = [0, 1, -1].some((value) => numberValue(expression.subs({ [variable]: value })) !== null);
-  if (!hasNumericSample) return null;
   return { kind: 'function', variable, expression };
 }
 
-function resolveExpression(source, engine, definitions) {
-  if (/^[A-Za-z_$][\w$]*$/.test(source.trim()) && definitions.has(source.trim())) return definitions.get(source.trim());
+function boundVariables(source) {
+  const names = new Set();
+  for (const match of source.matchAll(/\\(?:sum|prod)_\{\s*([A-Za-z_$][\w$]*)\s*=/g)) names.add(match[1]);
+  return names;
+}
+
+function resolveExpression(source, engine, definitions, excludedNames = new Set()) {
+  const trimmed = source.trim();
+  const nestedCall = callFromLine(trimmed);
+  if (nestedCall) {
+    if (['assume', 'forget', 'plot'].includes(nestedCall.name)) throw new Error(`${nestedCall.name}() cannot be nested`);
+    return evaluateLine(trimmed, engine, definitions, -1, true).expression;
+  }
+  const excluded = new Set([...excludedNames, ...boundVariables(source)]);
+  if (/^[A-Za-z_$][\w$]*$/.test(trimmed) && definitions.has(trimmed) && !excluded.has(trimmed)) return definitions.get(trimmed);
   let expandedSource = source;
   for (const [name, value] of [...definitions].sort(([a], [b]) => b.length - a.length)) {
+    if (excluded.has(name)) continue;
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     expandedSource = expandedSource.replace(new RegExp(`(^|[^A-Za-z0-9_$])${escaped}(?=$|[^A-Za-z0-9_$])`, 'g'), `$1(${value.latex})`);
   }
@@ -1193,7 +1262,7 @@ function resolveExpression(source, engine, definitions) {
   return expression.evaluate();
 }
 
-function evaluateLine(source, engine, definitions, lineIndex) {
+function evaluateLine(source, engine, definitions, lineIndex, nested = false) {
   const assignment = source.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)(.+)$/);
   const name = assignment?.[1] || '';
   const body = assignment?.[2]?.trim() || source;
@@ -1306,7 +1375,11 @@ function evaluateLine(source, engine, definitions, lineIndex) {
     if (call.args.length !== 4) throw new Error(`${call.name}() needs expression, variable, lower and upper bounds`);
     const variable = call.args[1].trim();
     if (!/^[A-Za-z_$][\w$]*$/.test(variable)) throw new Error(`${call.name}() needs a variable name`);
-    const input = resolveExpression(call.args[0], engine, definitions);
+    const savedVariable = definitions.get(variable);
+    engine.forget(variable);
+    let input;
+    try { input = resolveExpression(call.args[0], engine, definitions, new Set([variable])); }
+    finally { if (savedVariable) engine.assign(variable, savedVariable); }
     const lower = resolveExpression(call.args[2], engine, definitions);
     const upper = resolveExpression(call.args[3], engine, definitions);
     const operator = call.name === 'sum' ? 'Sum' : 'Product';
@@ -1362,8 +1435,41 @@ function evaluateLine(source, engine, definitions, lineIndex) {
     latex,
     graph,
     forceGraph,
+    expression,
     jessieDefinition: sharedValue ? `${name} = ${sharedValue};` : ''
   };
+}
+
+function stableHash(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function visibleStructure(line, state) {
+  let visible = '';
+  let quote = '';
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const next = line[index + 1];
+    if (state.blockComment) {
+      if (character === '*' && next === '/') { state.blockComment = false; index += 1; }
+      continue;
+    }
+    if (quote) {
+      if (character === quote && line[index - 1] !== '\\') quote = '';
+      visible += ' ';
+      continue;
+    }
+    if (character === '/' && next === '*') { state.blockComment = true; index += 1; continue; }
+    if (character === '/' && next === '/') break;
+    if (character === '"' || character === "'") { quote = character; visible += ' '; continue; }
+    visible += character;
+  }
+  return visible;
 }
 
 function analyzeSource(source, ComputeEngine) {
@@ -1372,21 +1478,35 @@ function analyzeSource(source, ComputeEngine) {
   const lines = source.split('\n');
   const results = [];
   const jessieLines = lines.slice();
+  const structure = { blockComment: false, depth: 0 };
+  const keyCounts = new Map();
   lines.forEach((line, lineIndex) => {
-    const casSource = casSourceFromLine(line);
+    const visible = visibleStructure(line, structure);
+    const topLevel = structure.depth === 0;
+    const opens = (visible.match(/\{/g) || []).length;
+    const closes = (visible.match(/\}/g) || []).length;
+    structure.depth = Math.max(0, structure.depth + opens - closes);
+    const casSource = topLevel && visible.trim() ? casSourceFromLine(line) : null;
     if (casSource === null) {
-      try { geometryDefinitionFromLine(line, engine, definitions); }
+      try { if (topLevel) geometryDefinitionFromLine(line, engine, definitions); }
       catch { /* Dynamic Jessie constructions do not need a CAS representation. */ }
       return;
     }
     jessieLines[lineIndex] = '';
+    const assignment = casSource.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)/);
+    const baseKey = assignment ? `name:${assignment[1]}` : `expr:${stableHash(casSource.replace(/\s+/g, ' ').trim())}`;
+    const occurrence = (keyCounts.get(baseKey) || 0) + 1;
+    keyCounts.set(baseKey, occurrence);
+    const key = occurrence === 1 ? baseKey : `${baseKey}:${occurrence}`;
     try {
       const result = evaluateLine(casSource, engine, definitions, lineIndex);
+      result.key = key;
+      delete result.expression;
       results.push(result);
       jessieLines[lineIndex] = result.jessieDefinition;
     }
     catch (error) {
-      results.push({ lineIndex, key: `line:${lineIndex}`, error: error?.message || String(error), graph: null, forceGraph: false });
+      results.push({ lineIndex, key, error: error?.message || String(error), graph: null, forceGraph: false });
     }
   });
   return { source, lines, jessieSource: jessieLines.join('\n'), results };
@@ -1458,22 +1578,74 @@ function replaceSimplePointCoordinates(code, name, x, y) {
 function simpleTextPositions(code) {
   const positions = [];
   const literal = new RegExp(String.raw`^(\s*(?:[A-Za-z_$][\w$]*\s*=\s*)?text\s*\(\s*)(${NUMBER})(\s*,\s*)(${NUMBER})(\s*,.*)$`);
-  let objectIndex = 0;
+  let braceDepth = 0;
+  let blockComment = false;
   code.split('\n').forEach((line, lineIndex) => {
-    const calls = line.match(/(?:^|;)\s*(?:[A-Za-z_$][\w$]*\s*=\s*)?text\s*\(/g) || [];
-    if (calls.length === 1 && literal.test(line)) positions.push({ lineIndex, objectIndex });
-    objectIndex += calls.length;
+    let visible = '';
+    let quote = '';
+    for (let index = 0; index < line.length; index += 1) {
+      const character = line[index];
+      const next = line[index + 1];
+      if (blockComment) {
+        if (character === '*' && next === '/') { blockComment = false; index += 1; }
+        continue;
+      }
+      if (quote) {
+        if (character === quote && line[index - 1] !== '\\') quote = '';
+        visible += ' ';
+        continue;
+      }
+      if (character === '/' && next === '*') { blockComment = true; index += 1; continue; }
+      if (character === '/' && next === '/') break;
+      if (character === '"' || character === "'") { quote = character; visible += ' '; continue; }
+      visible += character;
+    }
+    const match = braceDepth === 0 ? line.match(literal) : null;
+    const calls = visible.match(/(?:^|;)\s*(?:[A-Za-z_$][\w$]*\s*=\s*)?text\s*\(/g) || [];
+    if (calls.length === 1 && match) positions.push({
+      lineIndex,
+      x: Number(match[2]),
+      y: Number(match[4]),
+      head: match[1],
+      separator: match[3],
+      tail: match[5]
+    });
+    braceDepth = Math.max(0, braceDepth + (visible.match(/\{/g) || []).length - (visible.match(/\}/g) || []).length);
   });
   return positions;
 }
 
-function replaceSimpleTextCoordinates(code, lineIndex, x, y) {
+function replaceSimpleTextCoordinates(code, position, x, y) {
   const literal = new RegExp(String.raw`^(\s*(?:[A-Za-z_$][\w$]*\s*=\s*)?text\s*\(\s*)(${NUMBER})(\s*,\s*)(${NUMBER})(\s*,.*)$`);
   const lines = code.split('\n');
+  const lineIndex = typeof position === 'number' ? position : position?.lineIndex;
   const match = lines[lineIndex]?.match(literal);
   if (!match) return null;
+  if (typeof position === 'object' && (
+    match[1] !== position.head || match[3] !== position.separator || match[5] !== position.tail
+  )) return null;
   lines[lineIndex] = match[1] + formatNumber(x) + match[3] + formatNumber(y) + match[5];
   return lines.join('\n');
+}
+function touchPage(page, now = Date.now()) {
+  page.updatedAt = Math.max(Number(page.updatedAt) || 0, now) + 1;
+  return page;
+}
+
+function mergePages(localPages, storedPages) {
+  const storedById = new Map((storedPages || []).map((page) => [page.id, page]));
+  const merged = (localPages || []).map((page) => {
+    const stored = storedById.get(page.id);
+    storedById.delete(page.id);
+    return stored && (Number(stored.updatedAt) || 0) > (Number(page.updatedAt) || 0) ? stored : page;
+  });
+  return [...merged, ...storedById.values()];
+}
+
+function savedPixelSize(rawValue, minimum) {
+  if (rawValue === null || rawValue === '') return null;
+  const value = Number(rawValue);
+  return Number.isFinite(value) && value >= minimum ? value : null;
 }
 
 const computeEngine = new ComputeEngine();
@@ -1627,12 +1799,18 @@ const boardOptions = {
 function setStatus(kind, text, title = text) { status.className = kind; status.textContent = text; status.title = title; }
 function newId() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
 function currentPage() { return state.pages.find((p) => p.id === state.currentPageId) || state.pages[0] || null; }
-function makePage(name, source) { return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice(), casGraphs: [] }; }
+function makePage(name, source) {
+  return touchPage({ id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice(), casGraphs: [] });
+}
 
 function saveState() {
   clearTimeout(saveTimer);
   saveTimer = null;
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (Array.isArray(stored?.pages)) state.pages = mergePages(state.pages, stored.pages);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
   catch (err) { console.warn(err); setStatus('error', 'local save failed'); }
 }
 
@@ -1651,6 +1829,7 @@ function loadState() {
     const parsed = JSON.parse(raw);
     if (!parsed || !Array.isArray(parsed.pages) || !parsed.pages.length) return false;
     state = parsed;
+    state.pages.forEach((page) => { page.updatedAt = Number(page.updatedAt) || 0; });
     if (!state.pages.some((p) => p.id === state.currentPageId)) state.currentPageId = state.pages[0].id;
     return true;
   } catch (err) { console.warn(err); return false; }
@@ -1715,6 +1894,7 @@ function rememberSource(source) {
   const page = currentPage();
   if (!page) return;
   page.source = source;
+  touchPage(page);
   queueSaveState();
 }
 
@@ -1722,7 +1902,11 @@ function rememberView() {
   const page = currentPage();
   if (!page || !board) return;
   const bbox = board.getBoundingBox();
-  if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) { page.bbox = bbox.slice(); queueSaveState(); }
+  if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) {
+    page.bbox = bbox.slice();
+    touchPage(page);
+    queueSaveState();
+  }
 }
 
 function enabledCasKeys() {
@@ -1812,6 +1996,7 @@ function renderCasResults(analysis) {
           const keys = new Set(page.casGraphs || []);
           if (input.checked) keys.add(result.key); else keys.delete(result.key);
           page.casGraphs = Array.from(keys);
+          touchPage(page);
           saveState();
           render(editor.value, page.bbox, true);
         });
@@ -1869,6 +2054,7 @@ async function installBuiltinExamples(selectBasics = false) {
             validate(analyzeSource(example.source, ComputeEngine).jessieSource);
             page.source = example.source;
             page.lastGoodSource = example.source;
+            touchPage(page);
           } catch (err) { console.warn(`Keeping previous example ${example.key}`, err); }
         }
       }
@@ -1957,12 +2143,16 @@ function bindSimplePointSourceSync(code) {
 }
 
 function bindSimpleTextSourceSync(code, textObjects) {
+  const remaining = textObjects.slice();
   for (const position of simpleTextPositions(code)) {
-    const textObject = textObjects[position.objectIndex];
-    if (!textObject) continue;
+    const objectIndex = remaining.findIndex((candidate) =>
+      Math.abs(candidate.X() - position.x) < 1e-9 && Math.abs(candidate.Y() - position.y) < 1e-9
+    );
+    if (objectIndex < 0) continue;
+    const [textObject] = remaining.splice(objectIndex, 1);
     const sync = () => applyReadback(replaceSimpleTextCoordinates(
       editor.value,
-      position.lineIndex,
+      position,
       textObject.X(),
       textObject.Y()
     ));
@@ -1979,7 +2169,8 @@ function makeBoard(code, bbox, casAnalysis = null) {
   board = JXG.JSXGraph.initBoard('board', { ...boardOptions, boundingbox: Array.isArray(bbox) ? bbox : DEFAULT_BBOX });
   board.jc.parse(code);
   const sourceTexts = board.objectsList.filter((element) =>
-    element?.elType === 'text' && typeof element.X === 'function' && typeof element.Y === 'function'
+    element?.elType === 'text' && element !== board.infobox
+      && typeof element.X === 'function' && typeof element.Y === 'function'
   );
   if (casAnalysis) drawCasGraphs(board, casAnalysis.results, enabledCasKeys(), compile);
   board.on('update', updatePointReadback);
@@ -1997,7 +2188,12 @@ function render(code, bbox, showErrors = true) {
     validate(casAnalysis.jessieSource);
     makeBoard(casAnalysis.jessieSource, bbox, casAnalysis);
     const page = currentPage();
-    if (page) { page.lastGoodSource = code; page.source = code; saveState(); }
+    if (page) {
+      page.lastGoodSource = code;
+      page.source = code;
+      touchPage(page);
+      saveState();
+    }
     clearError();
     updateProgramLink();
     const casErrors = casAnalysis.results.filter((result) => result.error).length;
@@ -2247,6 +2443,7 @@ pageName.addEventListener('input', () => {
   const page = currentPage();
   if (!page) return;
   page.name = pageName.value || 'Untitled';
+  touchPage(page);
   saveState();
   const option = pageSelect.querySelector(`option[value="${CSS.escape(page.id)}"]`);
   if (option) option.textContent = page.name;
@@ -2256,6 +2453,7 @@ pageName.addEventListener('blur', () => {
   const page = currentPage();
   if (!page) return;
   page.name = pageName.value.trim() || 'Untitled';
+  touchPage(page);
   pageName.value = page.name;
   saveState();
   refreshPageControls();
@@ -2313,10 +2511,10 @@ editor.addEventListener('keydown', (event) => {
   }
 });
 
-const savedWidth = Number(localStorage.getItem('jessiepage-editor-width'));
-const savedHeight = Number(localStorage.getItem('jessiepage-editor-height'));
-if (Number.isFinite(savedWidth) && savedWidth >= 0) document.documentElement.style.setProperty('--editor-width', `${savedWidth}px`);
-if (Number.isFinite(savedHeight) && savedHeight >= 43) document.documentElement.style.setProperty('--editor-height', `${savedHeight}px`);
+const savedWidth = savedPixelSize(localStorage.getItem('jessiepage-editor-width'), 0);
+const savedHeight = savedPixelSize(localStorage.getItem('jessiepage-editor-height'), 43);
+if (savedWidth !== null) document.documentElement.style.setProperty('--editor-width', `${savedWidth}px`);
+if (savedHeight !== null) document.documentElement.style.setProperty('--editor-height', `${savedHeight}px`);
 
 initialize();
   </script>

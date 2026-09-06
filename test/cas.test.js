@@ -53,7 +53,7 @@ test('function and derivative graph callbacks evaluate their own expressions', (
 differentiate(f, x)`);
   const board = new MockBoard();
 
-  drawCasGraphs(board, analysis.results, new Set(['name:f', 'line:1']), compile);
+  drawCasGraphs(board, analysis.results, new Set(analysis.results.map((result) => result.key)), compile);
 
   assert.equal(board.created.length, 2);
   assert.deepEqual(board.created.map((object) => object.type), ['functiongraph', 'functiongraph']);
@@ -83,7 +83,7 @@ f*g`);
   const board = new MockBoard();
 
   assert.equal(product.latex, '\\cos(x)\\mathrm{e}^{x}');
-  drawCasGraphs(board, analysis.results, new Set(['line:3']), compile);
+  drawCasGraphs(board, analysis.results, new Set([product.key]), compile);
   assert.equal(board.created.length, 1);
   assert.ok(Math.abs(board.created[0].args[0](1) - Math.cos(1) * Math.E) < 1e-12);
 });
@@ -234,7 +234,7 @@ test('finite limits use a hollow point marker', () => {
 limit(f, x, 1)`);
   const board = new MockBoard();
 
-  drawCasGraphs(board, analysis.results, new Set(['line:1']), compile);
+  drawCasGraphs(board, analysis.results, new Set([resultAt(analysis, 1).key]), compile);
 
   assert.deepEqual(board.created[0].args, [1, 2]);
   assert.equal(board.created[0].attributes.fillColor, '#fff');
@@ -316,4 +316,91 @@ test('every built-in page has valid metadata and passes CAS source analysis', ()
     const errors = analyze(example.source).results.filter((result) => result.error);
     assert.deepEqual(errors, [], example.key);
   }
+});
+
+test('plain-text powers preserve multi-digit, decimal, negative and parenthesized exponents', () => {
+  const analysis = successful(`2^10
+x^12
+x^2.5
+x^-12
+x^(-2)
+x^sqrt(x)`);
+
+  assert.equal(resultAt(analysis, 0).latex, '1\\,024');
+  assert.equal(resultAt(analysis, 1).latex, 'x^{12}');
+  assert.equal(resultAt(analysis, 2).latex, 'x^{2.5}');
+  assert.equal(resultAt(analysis, 3).latex, '\\frac{1}{x^{12}}');
+  assert.equal(resultAt(analysis, 4).latex, '\\frac{1}{x^2}');
+  assert.equal(resultAt(analysis, 5).latex, 'x^{\\sqrt{x}}');
+});
+
+test('nested CAS operations evaluate recursively', () => {
+  const analysis = successful(`f = (x+2)*(x-2)
+differentiate(expand(f), x)
+simplify(substitute(f, x, 3))`);
+
+  assert.equal(resultAt(analysis, 1).latex, '2x');
+  assert.equal(resultAt(analysis, 2).latex, '5');
+});
+
+test('sum and product bound variables shadow shared definitions', () => {
+  const analysis = successful(String.raw`k = 5
+sum(k, k, 1, 3)
+product(k, k, 1, 3)
+\sum_{k=1}^{3} k
+\prod_{k=1}^{3} k`);
+
+  for (const lineIndex of [1, 2, 3, 4]) assert.equal(resultAt(analysis, lineIndex).latex, '6');
+});
+
+test('Jessie blocks and block comments are not consumed as CAS lines', () => {
+  const source = `for (n=0; n<3; n=n+1) {
+  t = n+1;
+  point(t,0);
+}
+/* x=4
+y=x+1 */
+a=2`;
+  const analysis = successful(source);
+
+  assert.equal(analysis.results.length, 1);
+  assert.equal(resultAt(analysis, 6).latex, '2');
+  assert.match(analysis.jessieSource, /t = n\+1;/);
+  assert.match(analysis.jessieSource, /\/\* x=4/);
+});
+
+test('terminated aliases and commented geometry definitions bridge into CAS', () => {
+  const analysis = successful(`a=5;
+b=a;
+A = point(-2, 0); // movable
+B = point(2, 2); // movable
+carrier = line(A, B); // equation for CAS
+b+1
+solve(carrier, y)`);
+
+  assert.equal(resultAt(analysis, 5).latex, '6');
+  assert.equal(resultAt(analysis, 6).latex, '\\left\\{\\frac{x}{2}+1\\right\\}');
+});
+
+test('shifted-domain functions and individual tuples are graphable', () => {
+  const analysis = successful(`sqrt(x-4)
+(2,3)
+plot((4,5))`);
+  const board = new MockBoard();
+
+  assert.equal(resultAt(analysis, 0).graph.kind, 'function');
+  assert.deepEqual(resultAt(analysis, 1).graph.coordinates, [[2, 3]]);
+  drawCasGraphs(board, analysis.results, new Set([resultAt(analysis, 0).key, resultAt(analysis, 1).key]), compile);
+  assert.ok(Number.isNaN(board.created[0].args[0](0)));
+  assert.equal(board.created[0].args[0](5), 1);
+  assert.deepEqual(board.created.filter((item) => item.type === 'point').map((item) => item.args), [[2, 3], [4, 5]]);
+});
+
+test('graph keys survive inserted comments and distinguish repeated names', () => {
+  const before = successful('x^2\nf=x\nf=x+1');
+  const after = successful('// note\nx^2\nf=x\nf=x+1');
+
+  assert.equal(resultAt(before, 0).key, resultAt(after, 1).key);
+  assert.equal(resultAt(before, 1).key, 'name:f');
+  assert.equal(resultAt(before, 2).key, 'name:f:2');
 });

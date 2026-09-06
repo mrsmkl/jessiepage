@@ -180,6 +180,7 @@ When adding or removing built-in pages, update the expected built-in count in `t
 | `app.js` | Editor, pages, persistence, JSXGraph lifecycle, and interaction |
 | `cas.js` | CAS detection, evaluation, graph descriptions, and Jessie/CAS bridge |
 | `readback.js` | Literal point and text coordinate source readback |
+| `state.js` | Page timestamps, cross-tab merging, and saved layout validation |
 | `examples.js` | Built-in sample and Euclid page registry |
 | `euclid/` | Standalone JessieCode sources for Euclid Book I |
 | `styles.css` | Responsive editor and canvas styling |

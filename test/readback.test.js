@@ -24,18 +24,37 @@ test('assigned and unassigned standalone text positions can be read back', () =>
     "text(1, 2, 'a'); text(3, 4, 'b');"
   ].join('\n');
 
-  assert.deepEqual(simpleTextPositions(source), [
-    { lineIndex: 0, objectIndex: 0 },
-    { lineIndex: 1, objectIndex: 1 }
+  const positions = simpleTextPositions(source);
+  assert.deepEqual(positions.map(({ lineIndex, x, y }) => ({ lineIndex, x, y })), [
+    { lineIndex: 0, x: -8, y: 8 },
+    { lineIndex: 1, x: -4, y: -3 }
   ]);
   assert.equal(
-    replaceSimpleTextCoordinates(source, 0, -6.25, 5.5),
+    replaceSimpleTextCoordinates(source, positions[0], -6.25, 5.5),
     [
       "title = text(-6.25, 5.5, 'I.1') <<fontSize:20>>;",
       "text(-4, -3, map () -> 'Length = ' + dist(A,B));",
       "text(1, 2, 'a'); text(3, 4, 'b');"
     ].join('\n')
   );
+});
+
+test('text readback ignores texts created inside runtime blocks', () => {
+  const source = `for (n=0; n<3; n=n+1) {
+  text(n, 0, 'loop');
+}
+text(2, 3, 'source');`;
+  const positions = simpleTextPositions(source);
+
+  assert.equal(positions.length, 1);
+  assert.deepEqual({ lineIndex: positions[0].lineIndex, x: positions[0].x, y: positions[0].y }, { lineIndex: 3, x: 2, y: 3 });
+});
+
+test('text readback refuses to rewrite a line changed after board creation', () => {
+  const original = "text(1, 2, 'first');";
+  const position = simpleTextPositions(original)[0];
+
+  assert.equal(replaceSimpleTextCoordinates("text(1, 2, 'different');", position, 4, 5), null);
 });
 
 test('computed text coordinates are not writable', () => {

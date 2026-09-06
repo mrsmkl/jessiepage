@@ -33,20 +33,52 @@ export function replaceSimplePointCoordinates(code, name, x, y) {
 export function simpleTextPositions(code) {
   const positions = [];
   const literal = new RegExp(String.raw`^(\s*(?:[A-Za-z_$][\w$]*\s*=\s*)?text\s*\(\s*)(${NUMBER})(\s*,\s*)(${NUMBER})(\s*,.*)$`);
-  let objectIndex = 0;
+  let braceDepth = 0;
+  let blockComment = false;
   code.split('\n').forEach((line, lineIndex) => {
-    const calls = line.match(/(?:^|;)\s*(?:[A-Za-z_$][\w$]*\s*=\s*)?text\s*\(/g) || [];
-    if (calls.length === 1 && literal.test(line)) positions.push({ lineIndex, objectIndex });
-    objectIndex += calls.length;
+    let visible = '';
+    let quote = '';
+    for (let index = 0; index < line.length; index += 1) {
+      const character = line[index];
+      const next = line[index + 1];
+      if (blockComment) {
+        if (character === '*' && next === '/') { blockComment = false; index += 1; }
+        continue;
+      }
+      if (quote) {
+        if (character === quote && line[index - 1] !== '\\') quote = '';
+        visible += ' ';
+        continue;
+      }
+      if (character === '/' && next === '*') { blockComment = true; index += 1; continue; }
+      if (character === '/' && next === '/') break;
+      if (character === '"' || character === "'") { quote = character; visible += ' '; continue; }
+      visible += character;
+    }
+    const match = braceDepth === 0 ? line.match(literal) : null;
+    const calls = visible.match(/(?:^|;)\s*(?:[A-Za-z_$][\w$]*\s*=\s*)?text\s*\(/g) || [];
+    if (calls.length === 1 && match) positions.push({
+      lineIndex,
+      x: Number(match[2]),
+      y: Number(match[4]),
+      head: match[1],
+      separator: match[3],
+      tail: match[5]
+    });
+    braceDepth = Math.max(0, braceDepth + (visible.match(/\{/g) || []).length - (visible.match(/\}/g) || []).length);
   });
   return positions;
 }
 
-export function replaceSimpleTextCoordinates(code, lineIndex, x, y) {
+export function replaceSimpleTextCoordinates(code, position, x, y) {
   const literal = new RegExp(String.raw`^(\s*(?:[A-Za-z_$][\w$]*\s*=\s*)?text\s*\(\s*)(${NUMBER})(\s*,\s*)(${NUMBER})(\s*,.*)$`);
   const lines = code.split('\n');
+  const lineIndex = typeof position === 'number' ? position : position?.lineIndex;
   const match = lines[lineIndex]?.match(literal);
   if (!match) return null;
+  if (typeof position === 'object' && (
+    match[1] !== position.head || match[3] !== position.separator || match[5] !== position.tail
+  )) return null;
   lines[lineIndex] = match[1] + formatNumber(x) + match[3] + formatNumber(y) + match[5];
   return lines.join('\n');
 }

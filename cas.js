@@ -7,8 +7,60 @@ const CAS_CALLS = new Set([
 const JESSIE_CALL = /\b(?:point|line|segment|circle|polygon|midpoint|intersection|perpendicular|circumcircle|glider|tangent|slider|functiongraph|curve|text|angle|map|V)\s*\(/;
 const PLAIN_MATH_FUNCTION = /(^|[^\\A-Za-z])(arcsinh|arccosh|arctanh|arcsin|arccos|arctan|sinh|cosh|tanh|sqrt|floor|ceil|sin|cos|tan|cot|sec|csc|log|ln|exp|abs)\s*\(/g;
 
+function normalizePlainPowers(source) {
+  let result = '';
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (character !== '^' || source[index + 1] === '{') { result += character; continue; }
+    let cursor = index + 1;
+    if (source[cursor] === '(') {
+      let depth = 1;
+      let end = cursor + 1;
+      while (end < source.length && depth) {
+        if (source[end] === '(') depth += 1;
+        else if (source[end] === ')') depth -= 1;
+        end += 1;
+      }
+      if (!depth) {
+        result += `^{${source.slice(cursor + 1, end - 1)}}`;
+        index = end - 1;
+        continue;
+      }
+    }
+    if (source[cursor] === '\\') {
+      const command = source.slice(cursor).match(/^\\[A-Za-z]+/);
+      const open = command ? cursor + command[0].length : -1;
+      if (command && source[open] === '(') {
+        let depth = 1;
+        let end = open + 1;
+        while (end < source.length && depth) {
+          if (source[end] === '(') depth += 1;
+          else if (source[end] === ')') depth -= 1;
+          end += 1;
+        }
+        if (!depth) {
+          result += `^{${source.slice(cursor, end)}}`;
+          index = end - 1;
+          continue;
+        }
+      }
+    }
+    const match = source.slice(cursor).match(/^[-+]?(?:(?:\d+(?:\.\d*)?|\.\d+)|[A-Za-z_$][\w$]*)/);
+    if (match) {
+      result += `^{${match[0]}}`;
+      index += match[0].length;
+    } else result += character;
+  }
+  return result;
+}
+
 function normalizeMathSource(source) {
-  return source.replace(PLAIN_MATH_FUNCTION, (match, prefix, name) => `${prefix}\\${name}(`);
+  const named = source
+    .replace(PLAIN_MATH_FUNCTION, (match, prefix, name) => `${prefix}\\${name}(`)
+    .replace(/(^|[^\\A-Za-z])pi(?=$|[^A-Za-z])/gi, '$1\\pi')
+    .replace(/(^|[^\\A-Za-z])true(?=$|[^A-Za-z])/gi, '$1\\mathrm{True}')
+    .replace(/(^|[^\\A-Za-z])false(?=$|[^A-Za-z])/gi, '$1\\mathrm{False}');
+  return normalizePlainPowers(named);
 }
 
 function displayLatex(latex) {
@@ -50,7 +102,7 @@ function casSourceFromLine(line) {
   if (/^(?:\$board|for|if|while)\b/.test(source) || /<<|\.glide\s*\(/.test(source)) return null;
   const terminatedAssignment = source.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)([^;]+?)\s*;\s*(?:\/\/.*)?$/);
   const terminatedBody = terminatedAssignment?.[2] || '';
-  if (terminatedAssignment && /[\d+\-*/^()]/.test(terminatedBody) && !/[\[\]{}]/.test(terminatedBody)
+  if (terminatedAssignment && terminatedBody.trim() && !/[\[\]{}]/.test(terminatedBody)
       && !JESSIE_CALL.test(source) && !/['"]/.test(source)) {
     return `${terminatedAssignment[1]} = ${terminatedAssignment[2].trim()}`;
   }
@@ -101,6 +153,11 @@ function pointValues(expression, engine) {
   const json = expression.json;
   if (!Array.isArray(json)) return [];
   const [operator, ...items] = json;
+  if (['Tuple', 'Pair'].includes(operator) && items.length === 2) {
+    const x = numberValue(engine.box(items[0]));
+    const y = numberValue(engine.box(items[1]));
+    if (x !== null && y !== null) return [[x, y]];
+  }
   const collection = ['List', 'Set', 'Tuple'].includes(operator) ? items : [];
   if (!collection.length) return [];
 
@@ -125,7 +182,7 @@ function jessieValue(expression, engine) {
 }
 
 function geometryDefinitionFromLine(line, engine, definitions) {
-  const match = line.trim().match(/^([A-Za-z_$][\w$]*)\s*=\s*(point|line|segment|circle|functiongraph)\s*\(([\s\S]*?)\)\s*(?:<<[\s\S]*>>)?\s*;?\s*$/i);
+  const match = line.trim().match(/^([A-Za-z_$][\w$]*)\s*=\s*(point|line|segment|circle|functiongraph)\s*\(([\s\S]*?)\)\s*(?:<<[\s\S]*>>)?\s*;?\s*(?:\/\/.*)?$/i);
   if (!match) return;
   const [, name, rawKind, rawArguments] = match;
   const kind = rawKind.toLowerCase();
@@ -184,15 +241,27 @@ function graphFor(expression, engine, preferredVariable = '') {
   const variables = Array.from(expression.unknowns || expression.freeVariables || []);
   if (variables.length !== 1) return null;
   const variable = preferredVariable || variables[0];
-  const hasNumericSample = [0, 1, -1].some((value) => numberValue(expression.subs({ [variable]: value })) !== null);
-  if (!hasNumericSample) return null;
   return { kind: 'function', variable, expression };
 }
 
-function resolveExpression(source, engine, definitions) {
-  if (/^[A-Za-z_$][\w$]*$/.test(source.trim()) && definitions.has(source.trim())) return definitions.get(source.trim());
+function boundVariables(source) {
+  const names = new Set();
+  for (const match of source.matchAll(/\\(?:sum|prod)_\{\s*([A-Za-z_$][\w$]*)\s*=/g)) names.add(match[1]);
+  return names;
+}
+
+function resolveExpression(source, engine, definitions, excludedNames = new Set()) {
+  const trimmed = source.trim();
+  const nestedCall = callFromLine(trimmed);
+  if (nestedCall) {
+    if (['assume', 'forget', 'plot'].includes(nestedCall.name)) throw new Error(`${nestedCall.name}() cannot be nested`);
+    return evaluateLine(trimmed, engine, definitions, -1, true).expression;
+  }
+  const excluded = new Set([...excludedNames, ...boundVariables(source)]);
+  if (/^[A-Za-z_$][\w$]*$/.test(trimmed) && definitions.has(trimmed) && !excluded.has(trimmed)) return definitions.get(trimmed);
   let expandedSource = source;
   for (const [name, value] of [...definitions].sort(([a], [b]) => b.length - a.length)) {
+    if (excluded.has(name)) continue;
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     expandedSource = expandedSource.replace(new RegExp(`(^|[^A-Za-z0-9_$])${escaped}(?=$|[^A-Za-z0-9_$])`, 'g'), `$1(${value.latex})`);
   }
@@ -201,7 +270,7 @@ function resolveExpression(source, engine, definitions) {
   return expression.evaluate();
 }
 
-function evaluateLine(source, engine, definitions, lineIndex) {
+function evaluateLine(source, engine, definitions, lineIndex, nested = false) {
   const assignment = source.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)(.+)$/);
   const name = assignment?.[1] || '';
   const body = assignment?.[2]?.trim() || source;
@@ -314,7 +383,11 @@ function evaluateLine(source, engine, definitions, lineIndex) {
     if (call.args.length !== 4) throw new Error(`${call.name}() needs expression, variable, lower and upper bounds`);
     const variable = call.args[1].trim();
     if (!/^[A-Za-z_$][\w$]*$/.test(variable)) throw new Error(`${call.name}() needs a variable name`);
-    const input = resolveExpression(call.args[0], engine, definitions);
+    const savedVariable = definitions.get(variable);
+    engine.forget(variable);
+    let input;
+    try { input = resolveExpression(call.args[0], engine, definitions, new Set([variable])); }
+    finally { if (savedVariable) engine.assign(variable, savedVariable); }
     const lower = resolveExpression(call.args[2], engine, definitions);
     const upper = resolveExpression(call.args[3], engine, definitions);
     const operator = call.name === 'sum' ? 'Sum' : 'Product';
@@ -370,8 +443,41 @@ function evaluateLine(source, engine, definitions, lineIndex) {
     latex,
     graph,
     forceGraph,
+    expression,
     jessieDefinition: sharedValue ? `${name} = ${sharedValue};` : ''
   };
+}
+
+function stableHash(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function visibleStructure(line, state) {
+  let visible = '';
+  let quote = '';
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const next = line[index + 1];
+    if (state.blockComment) {
+      if (character === '*' && next === '/') { state.blockComment = false; index += 1; }
+      continue;
+    }
+    if (quote) {
+      if (character === quote && line[index - 1] !== '\\') quote = '';
+      visible += ' ';
+      continue;
+    }
+    if (character === '/' && next === '*') { state.blockComment = true; index += 1; continue; }
+    if (character === '/' && next === '/') break;
+    if (character === '"' || character === "'") { quote = character; visible += ' '; continue; }
+    visible += character;
+  }
+  return visible;
 }
 
 export function analyzeSource(source, ComputeEngine) {
@@ -380,21 +486,35 @@ export function analyzeSource(source, ComputeEngine) {
   const lines = source.split('\n');
   const results = [];
   const jessieLines = lines.slice();
+  const structure = { blockComment: false, depth: 0 };
+  const keyCounts = new Map();
   lines.forEach((line, lineIndex) => {
-    const casSource = casSourceFromLine(line);
+    const visible = visibleStructure(line, structure);
+    const topLevel = structure.depth === 0;
+    const opens = (visible.match(/\{/g) || []).length;
+    const closes = (visible.match(/\}/g) || []).length;
+    structure.depth = Math.max(0, structure.depth + opens - closes);
+    const casSource = topLevel && visible.trim() ? casSourceFromLine(line) : null;
     if (casSource === null) {
-      try { geometryDefinitionFromLine(line, engine, definitions); }
+      try { if (topLevel) geometryDefinitionFromLine(line, engine, definitions); }
       catch { /* Dynamic Jessie constructions do not need a CAS representation. */ }
       return;
     }
     jessieLines[lineIndex] = '';
+    const assignment = casSource.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)/);
+    const baseKey = assignment ? `name:${assignment[1]}` : `expr:${stableHash(casSource.replace(/\s+/g, ' ').trim())}`;
+    const occurrence = (keyCounts.get(baseKey) || 0) + 1;
+    keyCounts.set(baseKey, occurrence);
+    const key = occurrence === 1 ? baseKey : `${baseKey}:${occurrence}`;
     try {
       const result = evaluateLine(casSource, engine, definitions, lineIndex);
+      result.key = key;
+      delete result.expression;
       results.push(result);
       jessieLines[lineIndex] = result.jessieDefinition;
     }
     catch (error) {
-      results.push({ lineIndex, key: `line:${lineIndex}`, error: error?.message || String(error), graph: null, forceGraph: false });
+      results.push({ lineIndex, key, error: error?.message || String(error), graph: null, forceGraph: false });
     }
   });
   return { source, lines, jessieSource: jessieLines.join('\n'), results };
