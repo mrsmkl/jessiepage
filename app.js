@@ -472,7 +472,11 @@ function bindSimplePointSourceSync(code) {
   for (const point of namedPoints()) {
     if (!writable.has(point.name)) continue;
     point.on('drag', () => { syncSimplePointToSource(point.name, point.X(), point.Y()); updatePointReadback(); });
-    point.on('up', () => { syncSimplePointToSource(point.name, point.X(), point.Y()); updatePointReadback(); });
+    point.on('up', () => {
+      syncSimplePointToSource(point.name, point.X(), point.Y());
+      updatePointReadback();
+      render(editor.value, currentPage()?.bbox, false);
+    });
   }
 }
 
