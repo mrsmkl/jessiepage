@@ -194,7 +194,7 @@ Use the built-in example pages as working syntax references. They are ordinary e
   \item Drag the divider between editor and canvas to resize the two areas.
 \end{itemize}
 
-\subsection{Dragging points and source readback}
+\subsection{Dragging points or text and source readback}
 
 A point written with two literal numeric coordinates is source-backed:
 
@@ -206,8 +206,17 @@ Dragging this point updates those coordinates in the text. The \ui{Points} area 
 
 Constructed points are intentionally not rewritten. For example, the source of a midpoint or a point defined by \code{map () -> ...} remains the construction rule, not its temporary position.
 
+A standalone text widget with two literal coordinates works the same way:
+
+\begin{lstlisting}[style=jessie]
+title = text(-4, 5, 'Move me');
+text(-4, -5, map () -> 'Length = ' + dist(A, B));
+\end{lstlisting}
+
+Dragging either widget updates only its first two arguments. The displayed text may be static or dynamic. A computed position such as \code{text(map () -> X(A), ...)} remains controlled by its expression and is not rewritten.
+
 \begin{tipbox}[Stable constructions]
-Use ordinary points for inputs that students should drag. Use midpoints, intersections, gliders, and map-defined points for derived objects. This keeps the source readable and preserves the construction logic.
+Use ordinary points and literal-position text for inputs that students should drag. Use midpoints, intersections, gliders, map-defined points, and computed text positions for derived objects. This keeps the source readable and preserves the construction logic.
 \end{tipbox}
 
 \section{Pages, saving, and links}

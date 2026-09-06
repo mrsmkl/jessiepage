@@ -2,6 +2,13 @@ import { ComputeEngine, compile } from 'https://cdn.jsdelivr.net/npm/@cortex-js/
 import katex from 'https://cdn.jsdelivr.net/npm/katex@0.18.6/+esm';
 import { BUILTIN_EXAMPLES } from './examples.js';
 import { analyzeSource, drawCasGraphs } from './cas.js';
+import {
+  formatNumber,
+  replaceSimplePointCoordinates,
+  replaceSimpleTextCoordinates,
+  simplePointNames,
+  simpleTextPositions
+} from './readback.js';
 
 const computeEngine = new ComputeEngine();
 
@@ -79,7 +86,6 @@ const canvasFullscreen = document.getElementById('canvas-fullscreen');
 
 const STORAGE_KEY = 'jessiepage-state-v1';
 const DEFAULT_BBOX = [-6, 6, 6, -6];
-const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
 const BUILTIN_EXAMPLES_VERSION = 18;
 const INPUT_RENDER_MS = 80;
 const SAVE_IDLE_MS = 250;
@@ -435,7 +441,7 @@ function clearError() {
   errorLine = null;
   errorMarker.style.display = 'none';
   hint.className = 'hint';
-  hint.textContent = 'Autosaved locally · drag canvas to pan · use board controls or wheel/pinch to zoom · drag simple points to edit source';
+  hint.textContent = 'Autosaved locally · drag canvas to pan · use board controls or wheel/pinch to zoom · drag simple points or text to edit source';
 }
 
 function showError(err) {
@@ -447,32 +453,18 @@ function showError(err) {
   setStatus('error', errorLine ? `line ${errorLine}` : 'error', message);
 }
 
-function formatNumber(value) { const clean = Math.abs(value) < 1e-12 ? 0 : value; return Number(clean.toFixed(6)).toString(); }
-function escapeRegex(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
-function simplePointNames(code) {
-  const names = new Set();
-  const assignment = new RegExp(String.raw`^\s*([A-Za-z_$][\w$]*)\s*=\s*point\s*\(\s*${NUMBER}\s*,\s*${NUMBER}\s*\)\s*;?(?:\s*\/\/.*)?\s*$`);
-  for (const line of code.split('\n')) { const match = line.match(assignment); if (match) names.add(match[1]); }
-  return names;
+function applyReadback(source) {
+  if (source == null) return false;
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  editor.value = source;
+  editor.setSelectionRange(start, end);
+  rememberSource(source);
+  return true;
 }
 
 function syncSimplePointToSource(name, x, y) {
-  const escapedName = escapeRegex(name);
-  const assignment = new RegExp(String.raw`^(\s*${escapedName}\s*=\s*point\s*\(\s*)(${NUMBER})(\s*,\s*)(${NUMBER})(\s*\)\s*;?(?:\s*\/\/.*)?\s*)$`);
-  const lines = editor.value.split('\n');
-  for (let i = 0; i < lines.length; i += 1) {
-    const match = lines[i].match(assignment);
-    if (!match) continue;
-    lines[i] = match[1] + formatNumber(x) + match[3] + formatNumber(y) + match[5];
-    const start = editor.selectionStart;
-    const end = editor.selectionEnd;
-    editor.value = lines.join('\n');
-    editor.setSelectionRange(start, end);
-    rememberSource(editor.value);
-    return true;
-  }
-  return false;
+  return applyReadback(replaceSimplePointCoordinates(editor.value, name, x, y));
 }
 
 function namedPoints() {
@@ -498,15 +490,37 @@ function bindSimplePointSourceSync(code) {
   }
 }
 
+function bindSimpleTextSourceSync(code, textObjects) {
+  for (const position of simpleTextPositions(code)) {
+    const textObject = textObjects[position.objectIndex];
+    if (!textObject) continue;
+    const sync = () => applyReadback(replaceSimpleTextCoordinates(
+      editor.value,
+      position.lineIndex,
+      textObject.X(),
+      textObject.Y()
+    ));
+    textObject.on('drag', sync);
+    textObject.on('up', () => {
+      sync();
+      render(editor.value, currentPage()?.bbox, false);
+    });
+  }
+}
+
 function makeBoard(code, bbox, casAnalysis = null) {
   if (board) JXG.JSXGraph.freeBoard(board);
   board = JXG.JSXGraph.initBoard('board', { ...boardOptions, boundingbox: Array.isArray(bbox) ? bbox : DEFAULT_BBOX });
   board.jc.parse(code);
+  const sourceTexts = board.objectsList.filter((element) =>
+    element?.elType === 'text' && typeof element.X === 'function' && typeof element.Y === 'function'
+  );
   if (casAnalysis) drawCasGraphs(board, casAnalysis.results, enabledCasKeys(), compile);
   board.on('update', updatePointReadback);
   board.on('boundingbox', rememberView);
   board.update();
   bindSimplePointSourceSync(code);
+  bindSimpleTextSourceSync(code, sourceTexts);
   updatePointReadback();
 }
 

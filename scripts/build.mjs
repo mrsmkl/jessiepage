@@ -1,22 +1,30 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
-const [html, css, appSource, examplesSource, casSource] = await Promise.all([
+const [html, css, appSource, examplesSource, casSource, readbackSource] = await Promise.all([
   readFile('index.html', 'utf8'),
   readFile('styles.css', 'utf8'),
   readFile('app.js', 'utf8'),
   readFile('examples.js', 'utf8'),
-  readFile('cas.js', 'utf8')
+  readFile('cas.js', 'utf8'),
+  readFile('readback.js', 'utf8')
 ]);
 
 const styleTag = '<link rel="stylesheet" href="./styles.css" />';
 const scriptTag = '<script type="module" src="./app.js"></script>';
 const examplesImport = "import { BUILTIN_EXAMPLES } from './examples.js';";
 const casImport = "import { analyzeSource, drawCasGraphs } from './cas.js';";
+const readbackImport = `import {
+  formatNumber,
+  replaceSimplePointCoordinates,
+  replaceSimpleTextCoordinates,
+  simplePointNames,
+  simpleTextPositions
+} from './readback.js';`;
 
 if (!html.includes(styleTag) || !html.includes(scriptTag)) {
   throw new Error('index.html is missing a bundle placeholder');
 }
-if (!appSource.includes(examplesImport) || !appSource.includes(casImport)) {
+if (!appSource.includes(examplesImport) || !appSource.includes(casImport) || !appSource.includes(readbackImport)) {
   throw new Error('app.js is missing a local module import');
 }
 
@@ -25,10 +33,13 @@ if (examples === examplesSource) throw new Error('examples.js has an unexpected 
 
 const cas = casSource.replace(/^export /gm, '');
 if (cas === casSource) throw new Error('cas.js has no exports to bundle');
+const readback = readbackSource.replace(/^export /gm, '');
+if (readback === readbackSource) throw new Error('readback.js has no exports to bundle');
 
 const app = appSource
   .replace(examplesImport, () => examples.trimEnd())
-  .replace(casImport, () => cas.trimEnd());
+  .replace(casImport, () => cas.trimEnd())
+  .replace(readbackImport, () => readback.trimEnd());
 if (app.includes('</script>')) throw new Error('The bundled module contains a closing script tag');
 
 const bundle = html

@@ -1,0 +1,2324 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JessiePage</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.6/dist/katex.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+  <style>
+:root {
+  color-scheme: light dark;
+  --panel: light-dark(#f6f7f9, #18191d);
+  --panel2: light-dark(#fff, #111216);
+  --border: light-dark(#d9dce2, #30333a);
+  --muted: light-dark(#6c717c, #9da3af);
+  --text: light-dark(#17191e, #eceef2);
+  --accent: light-dark(#2563eb, #7da3ff);
+  --error: light-dark(#c52a1d, #ff8a80);
+  --errorbg: light-dark(rgb(197 42 29 / .10), rgb(255 138 128 / .13));
+  --editor-width: 40vw;
+  --editor-height: 46vh;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--panel2); color: var(--text); font-family: Inter, system-ui, sans-serif; }
+main { width: 100vw; height: 100dvh; display: grid; grid-template-columns: minmax(0, var(--editor-width)) 7px minmax(0, 1fr); }
+.editor-pane { min-width: 0; min-height: 0; overflow: hidden; display: grid; grid-template-rows: auto minmax(0,1fr) auto auto; background: var(--panel); }
+.topline { height: 43px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border-bottom: 1px solid var(--border); overflow: hidden; user-select: none; }
+.brand { flex: 0 0 auto; font-size: 13px; font-weight: 680; }
+#page-select, #page-name { height: 28px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel2); color: var(--text); font: 12px system-ui, sans-serif; outline: none; }
+#page-select { width: 92px; min-width: 70px; padding: 0 22px 0 7px; }
+#page-name { width: 130px; min-width: 70px; padding: 0 8px; }
+#page-select:focus, #page-name:focus { border-color: var(--accent); }
+.icon-button { width: 28px; height: 28px; flex: 0 0 auto; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 7px; background: transparent; color: var(--muted); font: 18px/1 system-ui, sans-serif; cursor: pointer; }
+.fullscreen-button { display: none; }
+.top-link { flex: 0 0 auto; color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.top-link:hover { color: var(--accent); text-decoration: underline; }
+#status { margin-left: auto; max-width: 32%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 11px ui-monospace, monospace; }
+#status.pending { color: var(--accent); }
+#status.error { color: var(--error); }
+.editor-wrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.source-editor { position: absolute; inset: 0; min-width: 0; min-height: 0; overflow: hidden; }
+#error-line-marker { position: absolute; z-index: 0; left: 0; right: 0; display: none; background: var(--errorbg); border-left: 3px solid var(--error); pointer-events: none; }
+textarea { position: relative; z-index: 1; width: 100%; height: 100%; min-width: 0; min-height: 0; resize: none; border: 0; outline: 0; padding: 16px 17px 24px; background: transparent; color: var(--text); caret-color: var(--accent); font: 14px/2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; }
+.cas-results { position: absolute; z-index: 2; inset: 0 10px; min-width: 0; min-height: 0; overflow: hidden; pointer-events: none; }
+.cas-result-lines { width: 100%; min-width: 0; padding: 16px 0 24px; }
+.cas-result-line { height: var(--cas-line-height, 28px); display: flex; justify-content: flex-end; align-items: center; color: var(--text); white-space: nowrap; font-size: 15px; }
+.cas-result-bubble { position: relative; max-width: min(48%, 360px); min-height: 25px; display: inline-flex; align-items: center; gap: 7px; padding: 1px 7px; border: 1px solid color-mix(in srgb, var(--border) 72%, transparent); border-radius: 6px; background: color-mix(in srgb, var(--panel2) 88%, transparent); box-shadow: 0 1px 4px rgb(0 0 0 / .08); pointer-events: auto; }
+.cas-result-bubble::before { content: ""; position: absolute; top: 50%; right: 100%; width: var(--connector-width, 12px); border-top: 1px solid color-mix(in srgb, var(--muted) 32%, transparent); }
+.cas-formula { max-width: 230px; overflow: hidden; text-overflow: ellipsis; }
+.cas-formula .katex { font-size: 1em; }
+.cas-result-line.cas-error { color: var(--error); font: 11px/1.2 ui-monospace, monospace; }
+.cas-result-line.cas-error .cas-result-bubble { border-color: color-mix(in srgb, var(--error) 32%, transparent); background: color-mix(in srgb, var(--errorbg) 88%, transparent); }
+.graph-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font: 11px/1 system-ui, sans-serif; cursor: pointer; user-select: none; }
+.graph-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.graph-switch { width: 21px; height: 12px; padding: 2px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 35%, transparent); transition: background .15s ease; }
+.graph-switch::after { content: ""; display: block; width: 8px; height: 8px; border-radius: 50%; background: var(--panel2); box-shadow: 0 1px 2px rgb(0 0 0 / .2); transition: transform .15s ease; }
+.graph-toggle input:checked + .graph-switch { background: var(--accent); }
+.graph-toggle input:checked + .graph-switch::after { transform: translateX(9px); }
+.graph-toggle input:focus-visible + .graph-switch { outline: 2px solid var(--accent); outline-offset: 2px; }
+.autocomplete { position: absolute; z-index: 10; left: 12px; bottom: 8px; width: min(290px, calc(100% - 24px)); max-height: 190px; overflow: auto; display: none; padding: 4px; border: 1px solid var(--border); border-radius: 9px; background: color-mix(in srgb, var(--panel2) 96%, transparent); box-shadow: 0 5px 18px rgb(0 0 0 / .16); }
+.autocomplete.visible { display: block; }
+.autocomplete-item { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.autocomplete-item.selected { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.autocomplete-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: 12px ui-monospace, monospace; }
+.autocomplete-kind { margin-left: auto; color: var(--muted); font-size: 10px; }
+.hint { min-height: 30px; padding: 7px 13px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; line-height: 1.35; user-select: none; }
+.hint.error { color: var(--error); background: var(--errorbg); }
+.point-readback { max-height: 128px; overflow: auto; padding: 8px 13px 10px; border-top: 1px solid var(--border); background: color-mix(in srgb, var(--panel2) 45%, transparent); }
+.point-readback .label { margin-bottom: 5px; color: var(--muted); font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
+#points { margin: 0; color: var(--muted); font: 11px/1.5 ui-monospace, monospace; white-space: pre-wrap; }
+.splitter { position: relative; z-index: 5; cursor: col-resize; background: var(--border); touch-action: none; }
+.splitter::after { content: ""; position: absolute; inset: 0 -5px; }
+.splitter:hover, .splitter.dragging { background: var(--accent); }
+.board-pane { position: relative; min-width: 0; min-height: 0; padding: 12px; background: var(--panel2); }
+.board-pane:fullscreen, .board-pane:-webkit-full-screen { width: 100%; height: 100%; padding: 8px; }
+#board { width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff; cursor: grab; touch-action: none; overscroll-behavior: contain; }
+#board:active { cursor: grabbing; }
+.canvas-tools { position: absolute; right: 20px; bottom: 20px; z-index: 20; display: flex; gap: 7px; }
+.canvas-tool { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid rgb(0 0 0 / .16); border-radius: 10px; background: rgb(255 255 255 / .94); color: #222; box-shadow: 0 1px 4px rgb(0 0 0 / .14); font: 600 22px/1 system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+.canvas-tool.reset { width: 60px; font-size: 13px; }
+.canvas-tool.fullscreen { font-size: 21px; }
+#validator { position: fixed; left: -10000px; top: -10000px; width: 400px; height: 400px; opacity: 0; pointer-events: none; }
+@media (max-width: 760px) {
+  main { grid-template-columns: 1fr; grid-template-rows: minmax(43px, var(--editor-height)) 7px minmax(0,1fr); }
+  .editor-pane { grid-template-rows: auto minmax(0,1fr) auto; }
+  .brand { display: none; }
+  #page-select { width: 70px; min-width: 62px; }
+  #page-name { flex: 1 1 auto; width: auto; min-width: 58px; }
+  #status:not(.error) { display: none; }
+  #status.error { margin-left: 0; max-width: 46px; }
+  .fullscreen-button { display: grid; }
+  .top-link { font-size: 10px; }
+  textarea { padding-left: 12px; padding-right: 12px; font-size: 13px; }
+  .cas-results { inset-inline: 6px; }
+  .cas-result-line { gap: 4px; font-size: 14px; }
+  .cas-result-bubble { max-width: min(62%, 300px); gap: 4px; padding-inline: 5px; }
+  .cas-formula { max-width: 130px; }
+  .graph-toggle { font-size: 10px; }
+  .hint:not(.error), .point-readback { display: none; }
+  .splitter { cursor: row-resize; }
+  .splitter::after { inset: -5px 0; }
+  .board-pane { padding: 8px; }
+  #board { border-radius: 8px; }
+  .canvas-tools { right: 16px; bottom: 16px; gap: 8px; }
+  .canvas-tool { width: 48px; height: 48px; border-radius: 12px; font-size: 26px; }
+  .canvas-tool.reset { width: 64px; font-size: 14px; }
+  .canvas-tool.fullscreen { font-size: 23px; }
+  .autocomplete-item { min-height: 40px; }
+}
+  </style>
+</head>
+<body>
+  <main id="layout">
+    <section class="editor-pane">
+      <div class="topline">
+        <div class="brand">JessiePage</div>
+        <select id="page-select" aria-label="Switch page"></select>
+        <input id="page-name" type="text" maxlength="60" aria-label="Page name" title="Edit page name" />
+        <button id="add-page" class="icon-button" title="New page" aria-label="New page">+</button>
+        <button id="fullscreen-button" class="icon-button fullscreen-button" title="Enter fullscreen" aria-label="Enter fullscreen">⛶</button>
+        <a id="program-link" class="top-link" href="#" target="_blank" rel="noopener noreferrer" title="Open this program as a new graph">Link ↗</a>
+        <a class="top-link" href="https://jsxgraph.org/docs/symbols/JXG.JessieCode.html" target="_blank" rel="noopener noreferrer">Jessie ↗</a>
+        <div id="status">loading…</div>
+      </div>
+      <div class="editor-wrap">
+        <div class="source-editor">
+          <div id="error-line-marker" aria-hidden="true"></div>
+          <textarea id="editor" wrap="off" spellcheck="false" aria-label="JessieCode and CAS editor"></textarea>
+          <div id="autocomplete" class="autocomplete" role="listbox" aria-label="Autocomplete suggestions"></div>
+        </div>
+        <div id="cas-results" class="cas-results" aria-label="Live CAS results">
+          <div id="cas-result-lines" class="cas-result-lines"></div>
+        </div>
+      </div>
+      <div id="hint" class="hint">Autosaved locally · drag canvas to pan · use board controls or wheel/pinch to zoom · drag simple points to edit source</div>
+      <div class="point-readback"><div class="label">Points</div><pre id="points">—</pre></div>
+    </section>
+    <div id="splitter" class="splitter" role="separator" aria-label="Resize editor and canvas"></div>
+    <section class="board-pane" id="board-pane">
+      <div id="board" class="jxgbox"></div>
+      <div class="canvas-tools" aria-label="Canvas controls">
+        <button id="canvas-zoom-in" class="canvas-tool" title="Zoom in" aria-label="Zoom in">+</button>
+        <button id="canvas-zoom-out" class="canvas-tool" title="Zoom out" aria-label="Zoom out">−</button>
+        <button id="canvas-reset" class="canvas-tool reset" title="Reset view" aria-label="Reset view">100%</button>
+        <button id="canvas-fullscreen" class="canvas-tool fullscreen" title="Canvas fullscreen" aria-label="Canvas fullscreen">⛶</button>
+      </div>
+    </section>
+  </main>
+  <div id="validator" aria-hidden="true"></div>
+
+  <script type="module">
+import { ComputeEngine, compile } from 'https://cdn.jsdelivr.net/npm/@cortex-js/compute-engine@0.119.0/+esm';
+import katex from 'https://cdn.jsdelivr.net/npm/katex@0.18.6/+esm';
+const BUILTIN_EXAMPLES = [
+  { key: 'basics', name: 'Example · Basics', bbox: [-6,6,6,-6], source: `// Free points, lines, polygon, midpoint and circle.
+A = point(-3, -1);
+B = point(3, -1);
+C = point(0, 3);
+AB = segment(A, B);
+BC = line(B, C) << dash: 2 >>;
+tri = polygon(A, B, C) << fillColor: '#dbeafe', fillOpacity: 0.35 >>;
+M = midpoint(A, B);
+c = circle(M, C) << strokeColor: '#7c3aed' >>;` },
+  { key: 'intersections', name: 'Example · Intersections', bbox: [-6,6,6,-6], source: `A = point(-2, 0);
+B = point(2, 0);
+c1 = circle(A, 3) << fillOpacity: 0.06 >>;
+c2 = circle(B, 3) << fillOpacity: 0.06 >>;
+P = intersection(c1, c2, 0);
+Q = intersection(c1, c2, 1);
+segment(A, B);
+segment(P, Q) << dash: 2 >>;` },
+  { key: 'glider', name: 'Example · Glider + tangent', bbox: [-6,6,6,-6], source: `O = point(0, 0);
+R = point(3, 0);
+c = circle(O, R);
+P = glider(0, 3, c);
+t = tangent(P);
+segment(O, P) << dash: 2 >>;` },
+  { key: 'functions', name: 'Example · Function plots', bbox: [-6,6,6,-6], source: `f = functiongraph('sin(x)') << strokeWidth: 3 >>;
+g = functiongraph('0.25*x^2 - 2') << strokeColor: '#d97706' >>;
+h = functiongraph('2*cos(x/2)') << strokeColor: '#7c3aed', dash: 2 >>;` },
+  { key: 'slider', name: 'Example · Slider + function', bbox: [-6,6,6,-6], source: `a = slider([-4, -4], [2, -4], [-2, 1, 2]) << name: 'a' >>;
+f = functiongraph(map (x) -> V(a) * sin(x)) << strokeWidth: 3 >>;` },
+  { key: 'cardioid', name: 'Example · Parametric cardioid', bbox: [-6,6,6,-6], source: `fx = map (t) -> 2 * (1 - cos(t)) * cos(t);
+fy = map (t) -> 2 * (1 - cos(t)) * sin(t);
+c = curve(fx, fy, 0, 2 * PI) << strokeWidth: 3 >>;` },
+  { key: 'loop', name: 'Example · Programming', bbox: [-6,6,6,-6], source: `for (i = 0; i < 9; i = i + 1) {
+  point(i - 4, 2 * sin(i)) << name: '', withLabel: false >>;
+}` },
+  { key: 'cas-simplify', name: 'CAS · Simplify', bbox: [-6,6,6,-6], source: `// Plain-text definitions share one CAS scope.
+f = (x+1)^2 - (x^2+2*x)
+simplify(f)
+a = 5`, previousSourceHashes: ['1d7f987a1cd670bac95e763b619eda6f425fba8498c4de448ff09f978d3ad272', 'ad75b581ce876f9bfc051e6ccde0f02ad928850b95ca7aa163d61bd64668bb5f'] },
+  { key: 'cas-expand', name: 'CAS · Expand', bbox: [-6,6,6,-6], source: `// Turn on either Graph switch to use the shared canvas.
+f = (x+1)^3
+expand(f)`, previousSourceHash: '929a7fdc2bf228e8e392ab46a664689608f05a855fd5e22f19fc58b90fcb7be4' },
+  { key: 'cas-differentiate', name: 'CAS · Differentiate', bbox: [-8,8,8,-8], source: `// f is defined once and reused by the next line.
+f = x^3 + 2*x^2 - x + 4
+differentiate(f, x)`, previousSourceHashes: ['2238c1409676ca0c4996c03eb5bbe0b45ba515a682a3ee0a56da169e4a276743', '08decb0d564946f18722e0ad386d8e43011235d4cc59a6078e688fabe0fded3e'] },
+  { key: 'cas-solve', name: 'CAS · Solve to points', bbox: [-6,6,6,-6], source: `// solve() uses the current definition and returns every solution.
+f = x^2 - 4
+solve(f, x)`, previousSourceHashes: ['550770f454f89141d5c196ad112534ace0cfa0f7eb55a32c74c1848324a02c4e', 'fafe34c1409b378eea49d313bd16ec0b28def2e27bb754988d9f8532b912c0f3', 'e7fb538bdff08b6985328e0602a98c4b85a53153ee9da0b3c632f2fb9ccc9e1b'] },
+  { key: 'cas-points', name: 'CAS · Point set', bbox: [-6,6,6,-6], source: `// A set of coordinate pairs is graphed together.
+samples = {(-3,2),(-1,-2),(1,3),(3,1)}
+samples` },
+  { key: 'cas-factor', name: 'CAS · Factor', bbox: [-5,8,5,-8], source: `// Factor a polynomial without redefining it.
+f = x^3 - 6*x^2 + 11*x - 6
+factor(f, x)` },
+  { key: 'cas-together', name: 'CAS · Together', bbox: [-6,8,6,-8], source: `// Combine a sum of rational expressions.
+f = 1/x + 1/(x+1)
+together(f)` },
+  { key: 'cas-evaluate', name: 'CAS · Evaluate exactly', bbox: [-6,6,6,-6], source: `// Exact arithmetic stays exact where possible.
+a = 2^{10} - 1
+evaluate(a)
+evaluate(1/3 + 1/6)` },
+  { key: 'cas-numeric', name: 'CAS · Numeric approximation', bbox: [-6,6,6,-6], source: `// The optional second argument controls precision.
+r = 2^{1/2}
+numeric(r)
+numeric(r, 30)` },
+  { key: 'cas-substitute', name: 'CAS · Substitute', bbox: [-6,8,6,-8], source: `// The result can be graphed as a point on f.
+f = x^2 - 4
+substitute(f, x, 3)
+substitute(f, x, -2)` },
+  { key: 'cas-integrate', name: 'CAS · Integrate', bbox: [-5,8,5,-8], source: `// Indefinite results are graphable; definite results are scalars.
+f = x^2
+integrate(f, x)
+integrate(f, x, 0, 2)` },
+  { key: 'cas-limit', name: 'CAS · Limit', bbox: [-6,6,6,-6], source: `// The removable hole has the limiting value 2.
+f = (x^2 - 1)/(x - 1)
+limit(f, x, 1)` },
+  { key: 'cas-complex', name: 'CAS · Complex plane', bbox: [-7,7,7,-7], source: `// Complex results use (real, imaginary) on the shared graph.
+z = 3 + 2*i
+w = (1-i)*z
+z
+w` },
+  { key: 'cas-elementary-functions', name: 'CAS · Elementary functions', bbox: [-7,7,7,-7], source: `// Definitions also work inside later sums and products.
+f = cos(x)
+g = e^x
+f + g
+f*g`, previousSourceHash: '30a6a37caec804fbaf70bd2057ab7c140bd5dd313529f5d090abe22ac7843106' },
+  { key: 'cas-latex-input', name: 'CAS · LaTeX input', bbox: [-7,7,7,-7], source: `// Plain text and LaTeX-style expressions can be mixed.
+f = \\frac{x^2}{2}
+g = \\sin(x)
+f + g
+\\cos(x)` },
+  { key: 'cas-sum', name: 'CAS · Finite sums', bbox: [-7,7,7,-7], source: `// Reuse a term, or enter sigma notation directly.
+term = x^k
+s = sum(term, k, 1, 4)
+sum(k^2, k, 1, 10)
+\\sum_{k=1}^{10} k` },
+  { key: 'cas-product', name: 'CAS · Finite products', bbox: [-7,7,7,-7], source: `// A product with x remaining can use the shared graph.
+term = x+k
+p = product(term, k, 1, 3)
+product(k, k, 1, 6)
+\\prod_{k=1}^{6} k` },
+  { key: 'cas-shared-variables', name: 'CAS + Jessie · Shared values', bbox: [-7,7,7,-7], source: `// Constant values are defined in both CortexJS and JessieCode.
+scale = 2
+offset = 1;
+height = scale + offset
+A = point(-scale, offset);
+B = point(scale, height);
+carrier = line(A, B);
+solve(carrier, y)
+c = circle(A, scale);
+solve(c, y)
+f = x^2 + height` },
+  { key: 'cas-determinant', name: 'CAS · Matrix determinant', bbox: [-6,6,6,-6], source: `// Matrices render as results but are not mistaken for point sets.
+A = [[1,2],[3,4]]
+determinant(A)` },
+  { key: 'cas-inverse', name: 'CAS · Matrix inverse', bbox: [-6,6,6,-6], source: `// Reuse one matrix definition.
+A = [[1,2],[3,4]]
+inverse(A)` },
+  { key: 'cas-transpose', name: 'CAS · Matrix transpose', bbox: [-6,6,6,-6], source: `// Transpose rows and columns.
+A = [[1,2,3],[4,5,6]]
+transpose(A)` },
+  { key: 'cas-eigenvalues', name: 'CAS · Matrix eigenvalues', bbox: [-6,6,6,-6], source: `// CortexJS computes the eigenvalues from the shared matrix.
+A = [[2,1],[1,2]]
+eigenvalues(A)` },
+  { key: 'cas-range', name: 'CAS · Range', bbox: [-6,6,6,-6], source: `// range() includes the end value when the step reaches it.
+ascending = range(-3, 3)
+descending = range(3, -3, -2)` },
+  { key: 'cas-sampled-points', name: 'CAS · Sampled points', bbox: [-6,8,6,-8], source: `// Sample a single function definition and graph all paired points together.
+f = x^2 - 4
+xs = range(-3, 3)
+ys = map(f, xs)
+samples = zip(xs, ys)` },
+  { key: 'cas-assumptions', name: 'CAS · Assumptions', bbox: [-6,6,6,-6], source: `// Assumptions affect every later line until forget() clears them.
+assume(x > 0)
+simplify(\\sqrt{x^2})
+forget(x)
+simplify(\\sqrt{x^2})` }
+];
+
+// Standalone JessieCode diagrams, installed once as editable local pages.
+BUILTIN_EXAMPLES.push(...[
+  {
+"key": "euclid-postulate-01",
+"name": "Euclid · Postulate 1 · Join two points",
+"bbox": [
+  -10,
+  7,
+  10,
+  -7
+],
+"source": "// Euclid Book I — Postulate 1: Join two points\n// A straight segment can be drawn between any two points.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.1 onward.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-4, -1);\nB = point(4, 2);\nsegment(A,B) <<strokeWidth:3>>;\ntext(-9,-5,map () -> 'Length AB = '+round(100*dist(A,B))/100) <<display:'internal',fontSize:16>>;\ntext(-9,6,'Postulate 1: Join two points') <<display:'internal',fontSize:18>>;\n",
+"previousSourceHash": "77b9e79e675f770baf2010489ed5efb62f9b1e101e9d10d159a12ff43b5b458e"
+  },
+  {
+"key": "euclid-postulate-02",
+"name": "Euclid · Postulate 2 · Extend a straight segment",
+"bbox": [
+  -10,
+  7,
+  10,
+  -7
+],
+"source": "// Euclid Book I — Postulate 2: Extend a straight segment\n// A finite straight line can be extended continuously along the same straight line.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.2, I.5, I.16, I.20.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-3, 0);\nB = point(2, 1);\nline(A,B) <<strokeColor:'#99a4af',dash:2>>;\nsegment(A,B) <<strokeWidth:3>>;\nC=point(map () -> 2*X(B)-X(A), map () -> 2*Y(B)-Y(A));\nsegment(B,C) <<strokeWidth:3,strokeColor:'#b45b27'>>;\ntext(-9,-5,map () -> 'AB = '+round(100*dist(A,B))/100+'; BC = '+round(100*dist(B,C))/100+'. The direction is unchanged.') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Postulate 2: Extend a straight segment') <<display:'internal',fontSize:18>>;\n",
+"previousSourceHash": "d27cfd6c6c55e7e31cc72c91ad68c786cf4af757e05ea9c43a4ab68506f742b3"
+  },
+  {
+"key": "euclid-postulate-03",
+"name": "Euclid · Postulate 3 · Draw a circle",
+"bbox": [
+  -10,
+  7,
+  10,
+  -7
+],
+"source": "// Euclid Book I — Postulate 3: Draw a circle\n// A circle can be drawn with any center and distance.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.1–3, I.9–12, I.22.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nO = point(0, 0);\nA = point(3, 1);\nc=circle(O,A) <<strokeWidth:3>>;\nsegment(O,A) <<dash:2>>;\ntext(-9,-5,map () -> 'Center O; radius OA = '+round(100*dist(O,A))/100+'. Move either point.') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Postulate 3: Draw a circle') <<display:'internal',fontSize:18>>;\n",
+"previousSourceHash": "6bd106f3bfa5e2c25589c8f95a355a34e324b79935ab88dd89b1c9e3df1bd941"
+  },
+  {
+"key": "euclid-postulate-04",
+"name": "Euclid · Postulate 4 · All right angles are equal",
+"bbox": [
+  -10,
+  7,
+  10,
+  -7
+],
+"source": "// Euclid Book I — Postulate 4: All right angles are equal\n// All right angles are equal to one another, regardless of orientation or size.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.13–15, I.29, I.46–48.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-6, 0);\nB = point(-3, 0);\nC=point(map () -> X(A)-(Y(B)-Y(A)),map () -> Y(A)+X(B)-X(A));\nD = point(2, -1);\nE = point(4, 1);\nF=point(map () -> X(D)-1.2*(Y(E)-Y(D)),map () -> Y(D)+1.2*(X(E)-X(D)));\nsegment(A,B); segment(A,C);\nsegment(D,E); segment(D,F);\nangle(B,A,C) <<name:'90°',selection:'minor'>>;\nangle(E,D,F) <<name:'90°',selection:'minor'>>;\ntext(-9,-5,map () -> 'Angles BAC and EDF: '+round(10*deg(B,A,C))/10+'° and '+round(10*deg(E,D,F))/10+'°') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Postulate 4: All right angles are equal') <<display:'internal',fontSize:18>>;\n",
+"previousSourceHash": "ea10cabecbb490ba3b444745a5fb6c1744b688269330d58ece30bb13f14f40bd"
+  },
+  {
+"key": "euclid-postulate-05",
+"name": "Euclid · Postulate 5 · The parallel postulate",
+"bbox": [
+  -10,
+  7,
+  10,
+  -7
+],
+"source": "// Euclid Book I — Postulate 5: The parallel postulate\n// If a transversal makes same-side interior angles sum to less than two right angles, the two lines meet on that side.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.29; then I.30–48 through parallel-line results.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-4, 3);\nB = point(0, 2);\nC = point(-4, -3);\nD = point(0, -2);\na=line(A,B); b=line(C,D);\nsegment(B,D) <<strokeColor:'#b45b27',strokeWidth:3>>;\nR=point(map () -> 2*X(B)-X(A),map () -> 2*Y(B)-Y(A)) <<visible:false>>;\nS=point(map () -> 2*X(D)-X(C),map () -> 2*Y(D)-Y(C)) <<visible:false>>;\nE=intersection(a,b,0) <<name:'E'>>;\nangle(R,B,D) <<name:'α',selection:'minor'>>;\nangle(B,D,S) <<name:'β',selection:'minor'>>;\ntext(-9,-4.5,map () -> 'α + β = '+round(10*(min(deg(R,B,D),360-deg(R,B,D))+min(deg(B,D,S),360-deg(B,D,S))))/10+'°') <<display:'internal',fontSize:16>>;\ntext(-9,-5.5,function(){return abs(min(deg(R,B,D),360-deg(R,B,D))+min(deg(B,D,S),360-deg(B,D,S))-180)<0.1 ? 'The lines are parallel.' : (min(deg(R,B,D),360-deg(R,B,D))+min(deg(B,D,S),360-deg(B,D,S))<180 ? 'The lines meet on the marked side.' : 'The lines meet on the opposite side.');}) <<display:'internal',fontSize:16>>;\n// Keep the marked rays on the right of transversal BD when exploring this case.\n// At a 180-degree sum the lines are parallel and E has no finite position.\ntext(-9,6,'Postulate 5: The parallel postulate') <<display:'internal',fontSize:18>>;\n",
+"previousSourceHash": "b1b14012c3319fd7d9c629154e03e8c1faf7d3932fdc1e64da98c9254ac85b8a"
+  },
+  {
+"key": "euclid-common-notion-01",
+"name": "Euclid · Common notion 1 · Equality to the same thing",
+"bbox": [
+  -10,
+  7,
+  10,
+  -7
+],
+"source": "// Euclid Book I — Common notion 1: Equality to the same thing\n// Magnitudes equal to the same magnitude are equal to one another.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.1: AC=AB and BC=AB imply AC=BC.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-4, 3);\nB = point(1, 3);\nC=point(-4,0) <<fixed:true>>;\nD=point(map () -> -4+dist(A,B),0);\nE=point(-4,-3) <<fixed:true>>;\nF=point(map () -> -4+dist(A,B),-3);\nsegment(A,B) <<strokeWidth:3>>;\nsegment(C,D) <<strokeWidth:3,strokeColor:'#b45b27'>>;\nsegment(E,F) <<strokeWidth:3,strokeColor:'#29917a'>>;\ntext(3,3,'c'); text(3,0,'a = c'); text(3,-3,'b = c');\ntext(-9,-5.5,map () -> 'c = '+round(100*dist(A,B))/100+'; a = '+round(100*dist(C,D))/100+'; b = '+round(100*dist(E,F))/100) <<display:'internal',fontSize:16>>;\n// AB represents c, CD represents a, EF represents b.\ntext(-9,6,'Common notion 1: Equality to the same thing') <<display:'internal',fontSize:18>>;\n",
+"previousSourceHash": "d9e97aacf86123c89dd85c7d5ed358ab2ca7c0b5624109ad193a0246b226fb0d"
+  },
+  {
+"key": "euclid-common-notion-02",
+"name": "Euclid · Common notion 2 · Add equals to equals",
+"bbox": [
+  -10,
+  7,
+  10,
+  -7
+],
+"source": "// Euclid Book I — Common notion 2: Add equals to equals\n// Adding equal magnitudes to equal magnitudes gives equal totals.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.2, I.13, I.32.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-6, 3);\nB = point(-2, 3);\nC = point(1, 3);\nsegment(A,B) <<strokeWidth:4>>;\nsegment(B,C) <<strokeWidth:4,strokeColor:'#b45b27'>>;\nD=point(-6,-1) <<fixed:true>>;\nE=point(map () -> -6+dist(A,B),-1);\nF=point(map () -> -6+dist(A,B)+dist(B,C),-1);\nG=point(-6,-3) <<fixed:true>>;\nH=point(map () -> -6+dist(A,B),-3);\nK=point(map () -> -6+dist(A,B)+dist(B,C),-3);\nsegment(D,E) <<strokeWidth:4>>; segment(E,F) <<strokeWidth:4,strokeColor:'#b45b27'>>;\nsegment(G,H) <<strokeWidth:4>>; segment(H,K) <<strokeWidth:4,strokeColor:'#b45b27'>>;\ntext(3,-1,'a + b'); text(3,-3,'a + b');\ntext(-9,-5.5,map () -> 'Each total = '+round(100*(dist(A,B)+dist(B,C)))/100+' ('+round(100*dist(A,B))/100+' + '+round(100*dist(B,C))/100+')') <<display:'internal',fontSize:16>>;\ntext(-9,6,'Common notion 2: Add equals to equals') <<display:'internal',fontSize:18>>;\n",
+"previousSourceHash": "a5795b2aaca7c08645ff919d984606d7ab5dc3095ef3898e4b8a752d5bca409b"
+  },
+  {
+"key": "euclid-common-notion-03",
+"name": "Euclid · Common notion 3 · Subtract equals from equals",
+"bbox": [
+  -10,
+  7,
+  10,
+  -7
+],
+"source": "// Euclid Book I — Common notion 3: Subtract equals from equals\n// Subtracting equal magnitudes from equal magnitudes leaves equal remainders.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.2, I.5, I.15, I.35, I.43.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-6, 3);\nB = point(-2, 3);\nC = point(1, 3);\nsegment(A,B) <<strokeWidth:4>>; segment(B,C) <<strokeWidth:4,strokeColor:'#b45b27'>>;\nD=point(-6,-1) <<fixed:true>>;\nE=point(map () -> -6+dist(A,B),-1);\nF=point(map () -> -6+dist(A,B)+dist(B,C),-1);\nG=point(-6,-3) <<fixed:true>>;\nH=point(map () -> -6+dist(A,B),-3);\nK=point(map () -> -6+dist(A,B)+dist(B,C),-3);\nsegment(D,E) <<strokeColor:'#aaa',dash:2>>; segment(E,F) <<strokeWidth:4,strokeColor:'#b45b27'>>;\nsegment(G,H) <<strokeColor:'#aaa',dash:2>>; segment(H,K) <<strokeWidth:4,strokeColor:'#b45b27'>>;\ntext(-9,-5.5,map () -> 'Remove '+round(100*dist(A,B))/100+' from '+round(100*(dist(A,B)+dist(B,C)))/100+': each remainder = '+round(100*dist(B,C))/100) <<display:'internal',fontSize:16>>;\ntext(-9,6,'Common notion 3: Subtract equals from equals') <<display:'internal',fontSize:18>>;\n",
+"previousSourceHash": "8964d0f7ffa63d583b3d180fddce0d8d907625c28cc50a743bc2f4677e8c9d11"
+  },
+  {
+"key": "euclid-common-notion-04",
+"name": "Euclid · Common notion 4 · Coincidence gives equality",
+"bbox": [
+  -10,
+  7,
+  10,
+  -7
+],
+"source": "// Euclid Book I — Common notion 4: Coincidence gives equality\n// Magnitudes that coincide under superposition are equal.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.4 superposition argument.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-6, -1);\nB = point(-3, -1);\nC = point(-5, 2);\nt=slider([-6,-4],[3,-4],[0,0,1]) <<name:'Superposition'>>;\nD=point(map () -> X(A)+7*(1-t.Value()),map () -> Y(A));\nE=point(map () -> X(B)+7*(1-t.Value()),map () -> Y(B));\nF=point(map () -> X(C)+7*(1-t.Value()),map () -> Y(C));\npolygon(A,B,C) <<fillColor:'#548abd',fillOpacity:0.3>>;\npolygon(D,E,F) <<fillColor:'#cf9945',fillOpacity:0.3>>;\ntext(-9,-5.5,function(){return abs(1-t.Value())<0.001 ? 'The triangles coincide, so corresponding parts are equal.' : 'Move Superposition to 1. Separation = '+round(100*7*(1-t.Value()))/100;}) <<display:'internal',fontSize:16>>;\ntext(-9,6,'Common notion 4: Coincidence gives equality') <<display:'internal',fontSize:18>>;\n",
+"previousSourceHash": "c2ac825f14af7e8652cfa1ee63a4cd3a96de77a839fdfa633f0b08efd92a0727"
+  },
+  {
+"key": "euclid-common-notion-05",
+"name": "Euclid · Common notion 5 · The whole exceeds a part",
+"bbox": [
+  -10,
+  7,
+  10,
+  -7
+],
+"source": "// Euclid Book I — Common notion 5: The whole exceeds a part\n// A whole magnitude is greater than a proper part of it.\n// Illustrative model of an assumption, not a proof.\n// Used in: I.6, I.7, I.16, I.39–40.\n$board.setBoundingBox([-10, 7, 10, -7], true);\n\nA = point(-5, 0);\nB = point(5, 0);\nC=point(map () -> X(A)+0.6*(X(B)-X(A)),map () -> Y(A)+0.6*(Y(B)-Y(A)));\nsegment(A,B) <<strokeWidth:8,strokeColor:'#ddd'>>;\nsegment(A,C) <<strokeWidth:4,strokeColor:'#245ea6'>>;\nsegment(C,B) <<strokeWidth:4,strokeColor:'#b45b27'>>;\ntext(-9,-4,map () -> 'AB = '+round(100*dist(A,B))/100+'; AC = '+round(100*dist(A,C))/100+'; CB = '+round(100*dist(C,B))/100) <<display:'internal',fontSize:16>>;\ntext(-9,-5.5,function(){return dist(A,B)<0.001 ? 'Move A and B apart.' : 'AC is '+round(1000*dist(A,C)/dist(A,B))/10+'% of the whole AB.';}) <<display:'internal',fontSize:16>>;\ntext(-9,6,'Common notion 5: The whole exceeds a part') <<display:'internal',fontSize:18>>;\n",
+"previousSourceHash": "f00a77c8191461279596fbc63a4a7eb9e92767868ef6df0c957dffa4641c7475"
+  },
+  {
+"key": "euclid-i-01",
+"name": "Euclid I.1 · Construct an equilateral triangle",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.1: Construct an equilateral triangle\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-2, 0);\nB = point(2, 0);\nc1=circle(A,B) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nc2=circle(B,A) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nC=intersection(c1,c2,0) <<name:'C'>>;\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nangle(B,A,C) <<name:'60°', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(A,B,C) <<name:'60°', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.1') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "0f0dc54e00e9b89507fbd359983e5b57e5c92a001fcacd8d2e6244658efef909"
+  },
+  {
+"key": "euclid-i-02",
+"name": "Euclid I.2 · Transfer a segment to a given point",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.2: Transfer a segment to a given point\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(0, 0);\nC = point(1, 2);\nsegment(B,C) <<strokeWidth:2, strokeColor:'#34465d'>>;\nc1=circle(A,B) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nc2=circle(B,A) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nD=intersection(c1,c2,0) <<name:'D'>>;\nG=point(map () -> X(D)+(1+dist(B,C)/dist(D,B))*(X(B)-X(D)),map () -> Y(D)+(1+dist(B,C)/dist(D,B))*(Y(B)-Y(D))) <<name:'G', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\ncircle(B,C) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nsegment(D,G) <<strokeWidth:2, strokeColor:'#34465d'>>;\nL=point(map () -> X(D)+(dist(D,G)/dist(D,A))*(X(A)-X(D)),map () -> Y(D)+(dist(D,G)/dist(D,A))*(Y(A)-Y(D))) <<name:'L', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\ncircle(D,G) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nsegment(D,L) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(A,L) <<strokeWidth:2, strokeColor:'#34465d'>>;\npolygon(D,A,B) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\ntext(-8,8,'I.2') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "acb31cbc2dbc69cc7c3e74a125f8221b197ac2ed9b42c8afc0073f7eb18c6331"
+  },
+  {
+"key": "euclid-i-03",
+"name": "Euclid I.3 · Cut the shorter length from the longer",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.3: Cut the shorter length from the longer\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 1);\nB = point(3, 1);\nC = point(-3, -2);\nD = point(-1, -1);\nsegment(A,B) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(C,D) <<strokeWidth:2, strokeColor:'#34465d'>>;\nE=point(map () -> X(A)+(dist(C,D)/dist(A,B))*(X(B)-X(A)),map () -> Y(A)+(dist(C,D)/dist(A,B))*(Y(B)-Y(A))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\ncircle(A,map () -> dist(C,D)) <<dash:2>>;\nsegment(A,E) <<strokeWidth:2, strokeColor:'#34465d'>>;\ntext(-8,8,'I.3') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "c484403c7a736a0ab488fb837c55600478faee2b9e304e4b1c86786680561b17"
+  },
+  {
+"key": "euclid-i-04",
+"name": "Euclid I.4 · Side-angle-side congruence",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.4: Side-angle-side congruence\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-6, 0);\nB = point(-3, 0);\nC = point(-5, 3);\nD=point(map () -> X(A)+7,map () -> Y(A)+0) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nE=point(map () -> X(B)+7,map () -> Y(B)+0) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nF=point(map () -> X(C)+7,map () -> Y(C)+0) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\npolygon(D,E,F) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nangle(B,A,C) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(E,D,F) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.4') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "c5ca9ab5351b170ee6f067ed65f9c106a721caf908ee0819c72ac4eb36ba6236"
+  },
+  {
+"key": "euclid-i-05",
+"name": "Euclid I.5 · Base angles of an isosceles triangle",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.5: Base angles of an isosceles triangle\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nB = point(-3, 0);\nC = point(3, 0);\nM=midpoint(B,C) <<name:'M'>>;\nl=perpendicular(line(B,C),M) <<dash:2>>;\nA = point(0, 4);\nA.glide(l);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nD=point(map () -> X(A)+(1.4)*(X(B)-X(A)),map () -> Y(A)+(1.4)*(Y(B)-Y(A))) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nE=point(map () -> X(A)+(1.4)*(X(C)-X(A)),map () -> Y(A)+(1.4)*(Y(C)-Y(A))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nsegment(B,D) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(C,E) <<strokeWidth:2, strokeColor:'#34465d'>>;\nangle(A,B,C) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(B,C,A) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.5') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "899054776d1932153f98a1081c70dfa21a30bdca003d474adb51f26e388126eb"
+  },
+  {
+"key": "euclid-i-06",
+"name": "Euclid I.6 · Equal angles imply equal opposite sides",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.6: Equal angles imply equal opposite sides\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nB = point(-3, 0);\nC = point(3, 0);\nM=midpoint(B,C) <<name:'M'>>;\nl=perpendicular(line(B,C),M) <<dash:2>>;\nA = point(0, 4);\nA.glide(l);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nD=point(map () -> X(A)+(1.4)*(X(B)-X(A)),map () -> Y(A)+(1.4)*(Y(B)-Y(A))) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nE=point(map () -> X(A)+(1.4)*(X(C)-X(A)),map () -> Y(A)+(1.4)*(Y(C)-Y(A))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nsegment(B,D) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(C,E) <<strokeWidth:2, strokeColor:'#34465d'>>;\nangle(A,B,C) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(B,C,A) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.6') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "e98b3d5770ac4f456c9b7d2d1d700775416c9f1135c22c18a80b1f25d00fec7b"
+  },
+  {
+"key": "euclid-i-07",
+"name": "Euclid I.7 · Uniqueness on the same side of a base",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.7: Uniqueness on the same side of a base\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nC = point(-1, 4);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nc1=circle(A,C) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nc2=circle(B,C) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nD=otherintersection(c1,c2,C) <<name:'D'>>;\npolygon(A,B,D) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\ntext(-8,8,'I.7') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "0f5e8627dbf775ec17b199be582611055715b78aeecc304d575d01401d4c6e12"
+  },
+  {
+"key": "euclid-i-08",
+"name": "Euclid I.8 · Side-side-side congruence",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.8: Side-side-side congruence\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-6, 0);\nB = point(-3, 0);\nC = point(-5, 3);\nD=point(map () -> X(A)+7,map () -> Y(A)+0) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nE=point(map () -> X(B)+7,map () -> Y(B)+0) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nF=point(map () -> X(C)+7,map () -> Y(C)+0) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\npolygon(D,E,F) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nangle(B,A,C) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(E,D,F) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.8') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "899eb8d5e0b4132314caf44e10a0875ce0bfc13d9eccf1c893d4ffd8f5843f57"
+  },
+  {
+"key": "euclid-i-09",
+"name": "Euclid I.9 · Bisect an angle",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.9: Bisect an angle\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nC = point(-1, 4);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nD=point(map () -> X(A)+(dist(A,B)/dist(A,C))*(X(C)-X(A)),map () -> Y(A)+(dist(A,B)/dist(A,C))*(Y(C)-Y(A))) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\ncircle(A,B) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nc1=circle(B,D) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nc2=circle(D,B) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nE=intersection(c1,c2,0) <<name:'E'>>;\nF=intersection(c1,c2,1) <<name:'F'>>;\nbd=line(B,D) <<visible:false>>;\nef=line(E,F) <<visible:false>>;\nM=intersection(bd,ef,0) <<name:'M'>>;\nsegment(B,D) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(A,M) <<strokeWidth:2, strokeColor:'#34465d'>>;\nangle(B,A,M) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(M,A,D) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.9') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "3a220c9e14998a1e2145a2eef55c702fec309066da5fb2eba74cbcf5660d7e5b"
+  },
+  {
+"key": "euclid-i-10",
+"name": "Euclid I.10 · Bisect a segment",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.10: Bisect a segment\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nc1=circle(A,B) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nc2=circle(B,A) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nC=intersection(c1,c2,0) <<name:'C'>>;\nD=intersection(c1,c2,1) <<name:'D'>>;\nl=line(C,D) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nM=intersection(line(A,B),l,0) <<name:'M'>>;\nsegment(A,B) <<strokeWidth:2, strokeColor:'#34465d'>>;\ntext(-8,8,'I.10') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "ac2da25418c954c209bb07252821bad90f30f4b5a4e713ff8e8a2c1d875b6016"
+  },
+  {
+"key": "euclid-i-11",
+"name": "Euclid I.11 · Erect a perpendicular at a point on a line",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.11: Erect a perpendicular at a point on a line\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nP = point(0, 0);\nP.glide(l);\nD=point(map () -> X(P)+(-1)*(X(A)-X(P)),map () -> Y(P)+(-1)*(Y(A)-Y(P))) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nc1=circle(A,D) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nc2=circle(D,A) <<strokeColor:'#9ba9b9',strokeWidth:1,dash:2>>;\nE=intersection(c1,c2,0) <<name:'E'>>;\nsegment(A,D) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(P,E) <<strokeWidth:2, strokeColor:'#34465d'>>;\nangle(A,P,E) <<name:'', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.11') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "4fe1fbe9a5e66cf28c9c359e8e5eb314c3c512e22d23eb2b3f8412db0d81efe6"
+  },
+  {
+"key": "euclid-i-12",
+"name": "Euclid I.12 · Drop a perpendicular to a line",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.12: Drop a perpendicular to a line\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nC = point(0, 3);\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nc=circle(C,map () -> sqrt(((X(B)-X(A))*(Y(C)-Y(A))-(Y(B)-Y(A))*(X(C)-X(A)))^2/dist(A,B)^2+dist(A,B)^2/4)) <<dash:2>>;\nD=intersection(l,c,0) <<name:'D'>>;\nE=intersection(l,c,1) <<name:'E'>>;\nM=midpoint(D,E) <<name:'M'>>;\nsegment(C,M) <<strokeWidth:2, strokeColor:'#34465d'>>;\nangle(A,M,C) <<name:'', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.12') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "6a84b8d05d6b6292034389e964f389c078a4169d169ee2caa397fdc881ec3d47"
+  },
+  {
+"key": "euclid-i-13",
+"name": "Euclid I.13 · Adjacent angles on a straight line",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.13: Adjacent angles on a straight line\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nO = point(0, 0);\nA = point(4, 0);\nB = point(1, 3);\nC=point(map () -> X(O)+(-1)*(X(A)-X(O)),map () -> Y(O)+(-1)*(Y(A)-Y(O))) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nsegment(O,A) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(O,B) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(O,C) <<strokeWidth:2, strokeColor:'#34465d'>>;\nangle(A,O,B) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(B,O,C) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.13') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "5710b58ca50398b85448e032ebae4f3869ffa0508907be8588525d30e09cefbb"
+  },
+  {
+"key": "euclid-i-14",
+"name": "Euclid I.14 · Supplementary adjacent angles imply a straight",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.14: Supplementary adjacent angles imply a straight line\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nO = point(0, 0);\nA = point(4, 0);\nB = point(1, 3);\nC=point(map () -> X(O)+(-1)*(X(A)-X(O)),map () -> Y(O)+(-1)*(Y(A)-Y(O))) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nsegment(O,A) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(O,B) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(O,C) <<strokeWidth:2, strokeColor:'#34465d'>>;\nangle(A,O,B) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(B,O,C) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.14') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "bd8c4a43163b6da3a729c849fe843f1dae3d7bc236e73466437f7bc86fc64192"
+  },
+  {
+"key": "euclid-i-15",
+"name": "Euclid I.15 · Vertical angles",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.15: Vertical angles\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nO = point(0, 0);\nA = point(4, 0);\nB = point(1, 3);\nC=point(map () -> X(O)+(-1)*(X(A)-X(O)),map () -> Y(O)+(-1)*(Y(A)-Y(O))) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nD=point(map () -> X(O)+(-1)*(X(B)-X(O)),map () -> Y(O)+(-1)*(Y(B)-Y(O))) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nline(A,C) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nline(B,D) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nangle(A,O,B) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(C,O,D) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(B,O,C) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(D,O,A) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.15') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "b53cf72ba3c06824ad908b1b997540b6516484c522d68fe0ca090cc27dafa348"
+  },
+  {
+"key": "euclid-i-16",
+"name": "Euclid I.16 · Exterior angle exceeds either remote interior ",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.16: Exterior angle exceeds either remote interior angle\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nC = point(-1, 4);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nD=point(map () -> X(B)+(1.6)*(X(C)-X(B)),map () -> Y(B)+(1.6)*(Y(C)-Y(B))) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nsegment(C,D) <<strokeWidth:2, strokeColor:'#34465d'>>;\nM=midpoint(A,C) <<name:'M'>>;\nE=point(map () -> X(B)+(2)*(X(M)-X(B)),map () -> Y(B)+(2)*(Y(M)-Y(B))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nsegment(B,E) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(C,E) <<strokeWidth:2, strokeColor:'#34465d'>>;\nangle(A,C,D) <<name:'γ', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(C,A,B) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(A,B,C) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.16') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "9193df3869ebfb49fe46a299dc33b4d4c6a8922d6cb47ca42a3d50d57da948f4"
+  },
+  {
+"key": "euclid-i-17",
+"name": "Euclid I.17 · Any two triangle angles sum to less than two r",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.17: Any two triangle angles sum to less than two right angles\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nC = point(-1, 4);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nangle(C,A,B) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(A,B,C) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(B,C,A) <<name:'γ', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.17') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "de6d49f40f3c81842444405d2f7063435c3563df8567b5ba9ca7c2845c0fc4a4"
+  },
+  {
+"key": "euclid-i-18",
+"name": "Euclid I.18 · Greater side faces greater angle",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.18: Greater side faces greater angle\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nC = point(-1, 4);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nangle(A,B,C) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(A,C,B) <<name:'γ', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.18') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "0684532d9bf8ca5a190c4377583ce3333c70a91fd65378a47c281a238a9bf0ef"
+  },
+  {
+"key": "euclid-i-19",
+"name": "Euclid I.19 · Greater angle faces greater side",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.19: Greater angle faces greater side\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nC = point(-1, 4);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nangle(A,B,C) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(A,C,B) <<name:'γ', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.19') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "ab1bc28c1296dbe6e106971ea87abb89fe7279beb9d2604207cd9d63b28ac34f"
+  },
+  {
+"key": "euclid-i-20",
+"name": "Euclid I.20 · Triangle inequality",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.20: Triangle inequality\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nC = point(-1, 4);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nD=point(map () -> X(B)+(1+dist(A,C)/dist(A,B))*(X(A)-X(B)),map () -> Y(B)+(1+dist(A,C)/dist(A,B))*(Y(A)-Y(B))) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nsegment(A,D) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(C,D) <<strokeWidth:2, strokeColor:'#34465d'>>;\ntext(-8,8,'I.20') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "0acabdfd5a8327a75372f310d86597444dd5dd08f9fc04a245bb1d5b3c5a478d"
+  },
+  {
+"key": "euclid-i-21",
+"name": "Euclid I.21 · Two segments meeting inside a triangle",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.21: Two segments meeting inside a triangle\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nC = point(-1, 4);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nD=point(map () -> (X(A)+X(B)+X(C))/3,map () -> (Y(A)+Y(B)+Y(C))/3) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nsegment(A,D) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(B,D) <<strokeWidth:2, strokeColor:'#34465d'>>;\nangle(A,D,B) <<name:'δ', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(A,C,B) <<name:'γ', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.21') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "6236ee6ec23e12da5258feffbe5f27458e094ac3fc6cba53c0611f0a59a8f02c"
+  },
+  {
+"key": "euclid-i-22",
+"name": "Euclid I.22 · Construct a triangle from three lengths",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.22: Construct a triangle from three lengths\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nU = point(-6, -4);\nV = point(-2, -4);\nW = point(0, -4);\nZ = point(3, -4);\nH = point(5, -4);\nK = point(10, -4);\nsegment(U,V) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(W,Z) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(H,K) <<strokeWidth:2, strokeColor:'#34465d'>>;\nA = point(-2, 0);\nB=point(map () -> X(A)+dist(U,V),map () -> Y(A)) <<name:'B', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nc1=circle(A,map () -> dist(H,K)) <<dash:2>>;\nc2=circle(B,map () -> dist(W,Z)) <<dash:2>>;\nC=intersection(c1,c2,0) <<name:'C'>>;\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\ntext(-8,8,'I.22') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "5c23fb2189b7098fa186c98490ad2a67f35d2b89b4f4579b21973716a787c2d3"
+  },
+  {
+"key": "euclid-i-23",
+"name": "Euclid I.23 · Copy an angle",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.23: Copy an angle\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-6, 0);\nB = point(-3, 0);\nC = point(-5, 3);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nD = point(1, 0);\nE = point(5, 0);\nF=point(map () -> X(D)+(dist(A,B)/dist(D,E))*(X(E)-X(D)),map () -> Y(D)+(dist(A,B)/dist(D,E))*(Y(E)-Y(D))) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nc1=circle(D,map () -> dist(A,C)) <<dash:2>>;\nc2=circle(F,map () -> dist(B,C)) <<dash:2>>;\nG=intersection(c1,c2,0) <<name:'G'>>;\nsegment(D,E) <<strokeWidth:2, strokeColor:'#34465d'>>;\npolygon(D,F,G) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nangle(B,A,C) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(F,D,G) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.23') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "94442c0bb8fde627fc06d7ef197f0dbd7396249ab4671abf9851b9d56cba985b"
+  },
+  {
+"key": "euclid-i-24",
+"name": "Euclid I.24 · Larger included angle gives larger base",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.24: Larger included angle gives larger base\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-5, 0);\nB = point(-2, 0);\nC = point(-4, 3);\nD=point(map () -> X(A)+7,map () -> Y(A)+0) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nE=point(map () -> X(B)+7,map () -> Y(B)+0) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nF=point(map () -> X(D)+dist(A,C)*cos(atan2(Y(B)-Y(A),X(B)-X(A))+acos(max(-1,min(1,((X(B)-X(A))*(X(C)-X(A))+(Y(B)-Y(A))*(Y(C)-Y(A)))/(dist(B,A)*dist(C,A)))))/2),map () -> Y(D)+dist(A,C)*sin(atan2(Y(B)-Y(A),X(B)-X(A))+acos(max(-1,min(1,((X(B)-X(A))*(X(C)-X(A))+(Y(B)-Y(A))*(Y(C)-Y(A)))/(dist(B,A)*dist(C,A)))))/2)) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\npolygon(D,E,F) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nangle(B,A,C) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(E,D,F) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.24') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "358858b93bfba8d1dc089c0a0f8cce83c3f491126b4a880dc3fd5fbea9452b6a"
+  },
+  {
+"key": "euclid-i-25",
+"name": "Euclid I.25 · Larger base gives larger included angle",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.25: Larger base gives larger included angle\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-5, 0);\nB = point(-2, 0);\nC = point(-4, 3);\nD=point(map () -> X(A)+7,map () -> Y(A)+0) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nE=point(map () -> X(B)+7,map () -> Y(B)+0) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nF=point(map () -> X(D)+dist(A,C)*cos(atan2(Y(B)-Y(A),X(B)-X(A))+acos(max(-1,min(1,((X(B)-X(A))*(X(C)-X(A))+(Y(B)-Y(A))*(Y(C)-Y(A)))/(dist(B,A)*dist(C,A)))))/2),map () -> Y(D)+dist(A,C)*sin(atan2(Y(B)-Y(A),X(B)-X(A))+acos(max(-1,min(1,((X(B)-X(A))*(X(C)-X(A))+(Y(B)-Y(A))*(Y(C)-Y(A)))/(dist(B,A)*dist(C,A)))))/2)) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\npolygon(D,E,F) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nangle(B,A,C) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(E,D,F) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.25') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "b333c921662229f38c35739efac4ecc8a31c572ae7c5af86c849f5eae9678a8e"
+  },
+  {
+"key": "euclid-i-26",
+"name": "Euclid I.26 · Angle-side congruence (ASA and AAS)",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.26: Angle-side congruence (ASA and AAS)\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-6, 0);\nB = point(-3, 0);\nC = point(-5, 3);\nD=point(map () -> X(A)+7,map () -> Y(A)+0) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nE=point(map () -> X(B)+7,map () -> Y(B)+0) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nF=point(map () -> X(C)+7,map () -> Y(C)+0) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\npolygon(D,E,F) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nangle(B,A,C) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(E,D,F) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(A,B,C) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(D,E,F) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.26') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "0d6e5498c25655e43003ab5b2d18b25ab815595c3e4b6e5285439ef72d736f62"
+  },
+  {
+"key": "euclid-i-27",
+"name": "Euclid I.27 · Alternate angles imply parallel lines",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.27: Alternate angles imply parallel lines\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-4, 0);\nB = point(4, 0);\nC = point(-3, 3);\nD=point(map () -> X(B)+X(C)-X(A),map () -> Y(B)+Y(C)-Y(A)) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nm=line(C,D) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nE=point(map () -> X(A)+(0.5)*(X(B)-X(A)),map () -> Y(A)+(0.5)*(Y(B)-Y(A))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nF=point(map () -> X(C)+(0.65)*(X(D)-X(C)),map () -> Y(C)+(0.65)*(Y(D)-Y(C))) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nline(E,F) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nangle(A,E,F) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(E,F,D) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.27') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "5f2195b3105b282d65711e8c33dfe05d0a16aa138fba7609d9acba1257250b4f"
+  },
+  {
+"key": "euclid-i-28",
+"name": "Euclid I.28 · Corresponding or supplementary angles imply pa",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.28: Corresponding or supplementary angles imply parallels\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-4, 0);\nB = point(4, 0);\nC = point(-3, 3);\nD=point(map () -> X(B)+X(C)-X(A),map () -> Y(B)+Y(C)-Y(A)) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nm=line(C,D) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nE=point(map () -> X(A)+(0.5)*(X(B)-X(A)),map () -> Y(A)+(0.5)*(Y(B)-Y(A))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nF=point(map () -> X(C)+(0.65)*(X(D)-X(C)),map () -> Y(C)+(0.65)*(Y(D)-Y(C))) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nline(E,F) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nangle(B,E,F) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(E,F,D) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.28') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "edf8b6e0d19314d966ad8b71a77639052a0fcb6b7ea9a41f2918e62834309f6a"
+  },
+  {
+"key": "euclid-i-29",
+"name": "Euclid I.29 · Angles made by a transversal of parallel lines",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.29: Angles made by a transversal of parallel lines\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-4, 0);\nB = point(4, 0);\nC = point(-3, 3);\nD=point(map () -> X(B)+X(C)-X(A),map () -> Y(B)+Y(C)-Y(A)) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nm=line(C,D) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nE=point(map () -> X(A)+(0.5)*(X(B)-X(A)),map () -> Y(A)+(0.5)*(Y(B)-Y(A))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nF=point(map () -> X(C)+(0.65)*(X(D)-X(C)),map () -> Y(C)+(0.65)*(Y(D)-Y(C))) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nline(E,F) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nangle(A,E,F) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(E,F,D) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(B,E,F) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.29') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "651f2d67ae3e24dc1a246699adae2c3fd4ff177c687cd28196c4f10b49a53114"
+  },
+  {
+"key": "euclid-i-30",
+"name": "Euclid I.30 · Lines parallel to the same line",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.30: Lines parallel to the same line\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-4, 0);\nB = point(4, 0);\nC = point(-3, 3);\nD = point(-2, -3);\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nm=parallel(l,C) <<dash:2>>;\nk=parallel(l,D) <<dash:2>>;\nE=point(map () -> X(B)+X(C)-X(A),map () -> Y(B)+Y(C)-Y(A)) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nF=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\ntext(-8,8,'I.30') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "f0104bd806bc80ede57b604af2bdf83c1967e91aec5cd924d63c89fc33fb0a8f"
+  },
+  {
+"key": "euclid-i-31",
+"name": "Euclid I.31 · Draw a parallel through a point",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.31: Draw a parallel through a point\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-4, 0);\nB = point(4, 0);\nC = point(-1, 3);\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nD=point(map () -> X(B)+X(C)-X(A),map () -> Y(B)+Y(C)-Y(A)) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nm=line(C,D) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nsegment(A,C) <<strokeWidth:2, strokeColor:'#34465d'>>;\ntext(-8,8,'I.31') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "f84367f9a8dd36889969f646d63bbd969d47563b756fca276e9521f13bd7c10b"
+  },
+  {
+"key": "euclid-i-32",
+"name": "Euclid I.32 · Exterior angle and the triangle angle sum",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.32: Exterior angle and the triangle angle sum\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nC = point(-1, 4);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nD=point(map () -> X(B)+(1.6)*(X(C)-X(B)),map () -> Y(B)+(1.6)*(Y(C)-Y(B))) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nsegment(C,D) <<strokeWidth:2, strokeColor:'#34465d'>>;\nparallel(line(A,B),C) <<dash:2>>;\nangle(C,A,B) <<name:'α', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(A,B,C) <<name:'β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\nangle(A,C,D) <<name:'α+β', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.32') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "3f7e9d2966bcc6b3d29a40601c8acf560a93fbb4354c8be5d0a29841ab375083"
+  },
+  {
+"key": "euclid-i-33",
+"name": "Euclid I.33 · Joining equal parallel segments",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.33: Joining equal parallel segments\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nD = point(-1, 3);\nC=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,C,D) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\nsegment(A,C) <<strokeWidth:2, strokeColor:'#34465d'>>;\ntext(-8,8,'I.33') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "6b9b6b054eb354fc4286096f8e75ce96ba0a6c6db44e7c80cb93ca236ad6af86"
+  },
+  {
+"key": "euclid-i-34",
+"name": "Euclid I.34 · Opposite parts and diagonal of a parallelogram",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.34: Opposite parts and diagonal of a parallelogram\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-3, 0);\nB = point(3, 0);\nD = point(-1, 3);\nC=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,C,D) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\nsegment(A,C) <<strokeWidth:2, strokeColor:'#34465d'>>;\ntext(-8,8,'I.34') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "50ca31d7ec079027978b1c810b48e95770c82e20358fa854c8b229dbcc99b9e3"
+  },
+  {
+"key": "euclid-i-35",
+"name": "Euclid I.35 · Parallelograms on the same base",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.35: Parallelograms on the same base\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-5, 0);\nB = point(-1, 0);\nD = point(-4, 3);\nC=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nm=line(D,C) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nslide=slider([-6,-3],[-2,-3],[-1,1.75,3]) <<name:'Shear',snapWidth:0.01>>;\nE=point(map () -> X(D)+(slide.Value())*(X(C)-X(D)),map () -> Y(D)+(slide.Value())*(Y(C)-Y(D))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nU=A;\nV=B;\nF=point(map () -> X(V)+X(E)-X(U),map () -> Y(V)+Y(E)-Y(U)) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,C,D) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\npolygon(U,V,F,E) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\ntext(-8,8,'I.35') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "0ea1075725a750fa7902378b2f6f9f7ccc901c2712e0d284d2cbb412db898355"
+  },
+  {
+"key": "euclid-i-36",
+"name": "Euclid I.36 · Parallelograms on equal bases",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.36: Parallelograms on equal bases\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-5, 0);\nB = point(-1, 0);\nD = point(-4, 3);\nC=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nm=line(D,C) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nslide=slider([-6,-3],[-2,-3],[-1,1.75,3]) <<name:'Shear',snapWidth:0.01>>;\nE=point(map () -> X(D)+(slide.Value())*(X(C)-X(D)),map () -> Y(D)+(slide.Value())*(Y(C)-Y(D))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nU=point(map () -> X(A)+(1.6)*(X(B)-X(A)),map () -> Y(A)+(1.6)*(Y(B)-Y(A))) <<name:'U', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nV=point(map () -> X(B)+X(U)-X(A),map () -> Y(B)+Y(U)-Y(A)) <<name:'V', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nF=point(map () -> X(V)+X(E)-X(U),map () -> Y(V)+Y(E)-Y(U)) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,C,D) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\npolygon(U,V,F,E) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\ntext(-8,8,'I.36') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "f92cafefbb5bfdbc28af7729bfa234bb3b2d179ee3a8a3058d249a6ffec705ac"
+  },
+  {
+"key": "euclid-i-37",
+"name": "Euclid I.37 · Triangles on the same base",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.37: Triangles on the same base\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-5, 0);\nB = point(-1, 0);\nD = point(-4, 3);\nC=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nm=line(D,C) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nslide=slider([-6,-3],[-2,-3],[-1,1.75,3]) <<name:'Shear',snapWidth:0.01>>;\nE=point(map () -> X(D)+(slide.Value())*(X(C)-X(D)),map () -> Y(D)+(slide.Value())*(Y(C)-Y(D))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nU=A;\nV=B;\npolygon(A,B,D) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\npolygon(U,V,E) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\ntext(-8,8,'I.37') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "873af1ea4e57b21b7d6935911aa60c1444c1d7a95d861969a9d5425fe9df101a"
+  },
+  {
+"key": "euclid-i-38",
+"name": "Euclid I.38 · Triangles on equal bases",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.38: Triangles on equal bases\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-5, 0);\nB = point(-1, 0);\nD = point(-4, 3);\nC=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nm=line(D,C) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nslide=slider([-6,-3],[-2,-3],[-1,1.75,3]) <<name:'Shear',snapWidth:0.01>>;\nE=point(map () -> X(D)+(slide.Value())*(X(C)-X(D)),map () -> Y(D)+(slide.Value())*(Y(C)-Y(D))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nU=point(map () -> X(A)+(1.6)*(X(B)-X(A)),map () -> Y(A)+(1.6)*(Y(B)-Y(A))) <<name:'U', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nV=point(map () -> X(B)+X(U)-X(A),map () -> Y(B)+Y(U)-Y(A)) <<name:'V', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,D) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\npolygon(U,V,E) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\ntext(-8,8,'I.38') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "c18e6936542203e23f8fbcee358b13eb71b8df3d733a4ec8639280e160649d9f"
+  },
+  {
+"key": "euclid-i-39",
+"name": "Euclid I.39 · Equal triangles on the same base imply paralle",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.39: Equal triangles on the same base imply parallels\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-5, 0);\nB = point(-1, 0);\nD = point(-4, 3);\nC=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nm=line(D,C) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nslide=slider([-6,-3],[-2,-3],[-1,1.75,3]) <<name:'Shear',snapWidth:0.01>>;\nE=point(map () -> X(D)+(slide.Value())*(X(C)-X(D)),map () -> Y(D)+(slide.Value())*(Y(C)-Y(D))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nU=A;\nV=B;\npolygon(A,B,D) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\npolygon(U,V,E) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\ntext(-8,8,'I.39') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "0c2fb372b135cc3e6ca6b41256982e61900826989ad5da5dcdd3db032b990bb0"
+  },
+  {
+"key": "euclid-i-40",
+"name": "Euclid I.40 · Equal triangles on equal bases imply parallels",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.40: Equal triangles on equal bases imply parallels\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-5, 0);\nB = point(-1, 0);\nD = point(-4, 3);\nC=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nl=line(A,B) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nm=line(D,C) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nslide=slider([-6,-3],[-2,-3],[-1,1.75,3]) <<name:'Shear',snapWidth:0.01>>;\nE=point(map () -> X(D)+(slide.Value())*(X(C)-X(D)),map () -> Y(D)+(slide.Value())*(Y(C)-Y(D))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nU=point(map () -> X(A)+(1.6)*(X(B)-X(A)),map () -> Y(A)+(1.6)*(Y(B)-Y(A))) <<name:'U', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nV=point(map () -> X(B)+X(U)-X(A),map () -> Y(B)+Y(U)-Y(A)) <<name:'V', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,D) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\npolygon(U,V,E) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\ntext(-8,8,'I.40') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "0148537c10568c9ef62dd61e0062df1236b02c8a0532b165b034bdd3fe731712"
+  },
+  {
+"key": "euclid-i-41",
+"name": "Euclid I.41 · Parallelogram is twice a triangle",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.41: Parallelogram is twice a triangle\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-4, 0);\nB = point(2, 0);\nD = point(-3, 3);\nC=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nl=line(D,C) <<strokeColor:'#99a4af',strokeWidth:1,dash:2>>;\nslide=slider([-6,-3],[-2,-3],[-1,1.75,3]) <<name:'Shear',snapWidth:0.01>>;\nE=point(map () -> X(D)+(slide.Value())*(X(C)-X(D)),map () -> Y(D)+(slide.Value())*(Y(C)-Y(D))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,C,D) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\npolygon(A,B,E) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\ntext(-8,8,'I.41') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "2fde2a67d108f88017925f35ea2aaf924d276244b9b2ab5809347151f33ab1fe"
+  },
+  {
+"key": "euclid-i-42",
+"name": "Euclid I.42 · Parallelogram equal to a triangle in a given a",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.42: Parallelogram equal to a triangle in a given angle\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-6, 0);\nB = point(-2, 0);\nC = point(-5, 3);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nU = point(1, 0);\nV = point(5, 0);\nH = point(3, 3);\nsegment(U,H) <<strokeWidth:2, strokeColor:'#34465d'>>;\ntarget=map () -> abs((X(B)-X(A))*(Y(C)-Y(A))-(Y(B)-Y(A))*(X(C)-X(A)))/2;\ncross=map () -> abs((X(V)-X(U))*(Y(H)-Y(U))-(Y(V)-Y(U))*(X(H)-X(U)));\nW=point(map () -> X(U)+(target()/cross())*(X(H)-X(U)),map () -> Y(U)+(target()/cross())*(Y(H)-Y(U))) <<name:'W', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nZ=point(map () -> X(V)+X(W)-X(U),map () -> Y(V)+Y(W)-Y(U)) <<name:'Z', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(U,V,Z,W) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\nsegment(U,V) <<strokeWidth:2, strokeColor:'#34465d'>>;\nangle(V,U,W) <<name:'δ', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.42') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "573d23ef8c1371d57e7c79e040cca5aab5cfa00cdaeceac4bad94458ef0c9008"
+  },
+  {
+"key": "euclid-i-43",
+"name": "Euclid I.43 · Equal complements about a diagonal",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.43: Equal complements about a diagonal\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-4, 0);\nB = point(4, 0);\nD = point(-2, 5);\nC=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,C,D) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\ndiag=segment(A,C) <<strokeWidth:2, strokeColor:'#34465d'>>;\nslide=slider([-6,-3],[-2,-3],[0.05,0.5,0.95]) <<name:'Division',snapWidth:0.01>>;\nP=point(map () -> X(A)+(slide.Value())*(X(C)-X(A)),map () -> Y(A)+(slide.Value())*(Y(C)-Y(A))) <<name:'P', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nt=map () -> dist(A,P)/dist(A,C);\nE=point(map () -> X(A)+t()*(X(B)-X(A)),map () -> Y(A)+t()*(Y(B)-Y(A))) <<name:'E', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nF=point(map () -> X(A)+t()*(X(D)-X(A)),map () -> Y(A)+t()*(Y(D)-Y(A))) <<name:'F', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nG=point(map () -> X(B)+X(F)-X(A),map () -> Y(B)+Y(F)-Y(A)) <<name:'G', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nH=point(map () -> X(D)+X(E)-X(A),map () -> Y(D)+Y(E)-Y(A)) <<name:'H', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nsegment(E,H) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(F,G) <<strokeWidth:2, strokeColor:'#34465d'>>;\npolygon(E,B,G,P) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\npolygon(F,P,H,D) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\ntext(-8,8,'I.43') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "33aac50c1a40d10f0ad1f9b9da05f1cbc2eca5a9b6a901224a9081c7d73d22f9"
+  },
+  {
+"key": "euclid-i-44",
+"name": "Euclid I.44 · Apply an equal-area parallelogram to a given s",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.44: Apply an equal-area parallelogram to a given segment\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-6, 0);\nB = point(-2, 0);\nC = point(-5, 3);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nU = point(1, 0);\nV = point(5, 0);\nH = point(3, 3);\nsegment(U,H) <<strokeWidth:2, strokeColor:'#34465d'>>;\ntarget=map () -> abs((X(B)-X(A))*(Y(C)-Y(A))-(Y(B)-Y(A))*(X(C)-X(A)))/2;\ncross=map () -> abs((X(V)-X(U))*(Y(H)-Y(U))-(Y(V)-Y(U))*(X(H)-X(U)));\nW=point(map () -> X(U)+(target()/cross())*(X(H)-X(U)),map () -> Y(U)+(target()/cross())*(Y(H)-Y(U))) <<name:'W', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nZ=point(map () -> X(V)+X(W)-X(U),map () -> Y(V)+Y(W)-Y(U)) <<name:'Z', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(U,V,Z,W) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\nsegment(U,V) <<strokeWidth:2, strokeColor:'#34465d'>>;\nangle(V,U,W) <<name:'δ', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.44') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "6f5922abd8f1192501bec8037d6871f799477be197324c1286f827acc32bffbd"
+  },
+  {
+"key": "euclid-i-45",
+"name": "Euclid I.45 · Parallelogram equal to a rectilinear figure",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.45: Parallelogram equal to a rectilinear figure\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-6, 0);\nB = point(-2, 0);\nC = point(-5, 3);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nU = point(1, 0);\nV = point(5, 0);\nH = point(3, 3);\nsegment(U,H) <<strokeWidth:2, strokeColor:'#34465d'>>;\nD = point(-7, 2);\npolygon(A,B,C,D) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\ntarget=map () -> abs((X(B)-X(A))*(Y(C)-Y(A))-(Y(B)-Y(A))*(X(C)-X(A)))/2+abs((X(C)-X(A))*(Y(D)-Y(A))-(Y(C)-Y(A))*(X(D)-X(A)))/2;\ncross=map () -> abs((X(V)-X(U))*(Y(H)-Y(U))-(Y(V)-Y(U))*(X(H)-X(U)));\nW=point(map () -> X(U)+(target()/cross())*(X(H)-X(U)),map () -> Y(U)+(target()/cross())*(Y(H)-Y(U))) <<name:'W', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nZ=point(map () -> X(V)+X(W)-X(U),map () -> Y(V)+Y(W)-Y(U)) <<name:'Z', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(U,V,Z,W) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\nsegment(U,V) <<strokeWidth:2, strokeColor:'#34465d'>>;\nangle(V,U,W) <<name:'δ', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.45') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "cdb8bd1646f184b23bfebccf3bfe3112d20139ad1943e2fddfa019952238e3b9"
+  },
+  {
+"key": "euclid-i-46",
+"name": "Euclid I.46 · Construct a square on a segment",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.46: Construct a square on a segment\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-2, 2);\nB = point(2, 2);\nD=point(map () -> X(A)-(1)*(Y(B)-Y(A)),map () -> Y(A)+(1)*(X(B)-X(A))) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\nC=point(map () -> X(B)+X(D)-X(A),map () -> Y(B)+Y(D)-Y(A)) <<name:'C', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,C,D) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\nangle(A,B,C) <<name:'', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.46') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "9bbd1ce9748de39ac57851802491ef39fd17177a31fb8d5e35ad90c0d73e17b3"
+  },
+  {
+"key": "euclid-i-47",
+"name": "Euclid I.47 · Pythagorean theorem",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.47: Pythagorean theorem\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-2, 1);\nB = point(2, 1);\nl=perpendicular(line(A,B),A) <<visible:false>>;\nC = point(-2, 4);\nC.glide(l);\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\ns1D=point(map () -> X(A)-(-1)*(Y(B)-Y(A)),map () -> Y(A)+(-1)*(X(B)-X(A))) <<name:'', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\ns1C=point(map () -> X(B)+X(s1D)-X(A),map () -> Y(B)+Y(s1D)-Y(A)) <<name:'', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,s1C,s1D) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\ns1=[s1C,s1D];\ns2D=point(map () -> X(B)-(-1)*(Y(C)-Y(B)),map () -> Y(B)+(-1)*(X(C)-X(B))) <<name:'', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\ns2C=point(map () -> X(C)+X(s2D)-X(B),map () -> Y(C)+Y(s2D)-Y(B)) <<name:'', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(B,C,s2C,s2D) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\ns2=[s2C,s2D];\ns3D=point(map () -> X(C)-(-1)*(Y(A)-Y(C)),map () -> Y(C)+(-1)*(X(A)-X(C))) <<name:'', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\ns3C=point(map () -> X(A)+X(s3D)-X(C),map () -> Y(A)+Y(s3D)-Y(C)) <<name:'', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(C,A,s3C,s3D) <<fillColor:'#cf9945', fillOpacity:0.15, borders:<<strokeColor:'#846632',strokeWidth:2>>>>;\ns3=[s3C,s3D];\nq=perpendicular(line(B,C),A) <<dash:2>>;\nedge=line(s2[0],s2[1]) <<visible:false>>;\nR=intersection(q,edge,0) <<name:'L'>>;\nsegment(A,R) <<strokeWidth:2, strokeColor:'#34465d'>>;\nsegment(A,s2[1]) <<strokeColor:'#b45b27',dash:2>>;\nsegment(C,s1[0]) <<strokeColor:'#b45b27',dash:2>>;\nsegment(A,s2[0]) <<strokeColor:'#245ea6',dash:2>>;\nsegment(B,s3[0]) <<strokeColor:'#245ea6',dash:2>>;\nangle(B,A,C) <<name:'', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.47') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHashes": ["f81e7f8f581642bfe88a4ee8bc8afcd9103521b440ae007e4b042f7c72c741c2", "586843e871f5dd47a1588a10a15dcb19659ae2a69acd0ab81e1f833bcb4048f2"]
+  },
+  {
+"key": "euclid-i-48",
+"name": "Euclid I.48 · Converse of the Pythagorean theorem",
+"bbox": [
+  -9,
+  9,
+  13,
+  -9
+],
+"source": "// I.48: Converse of the Pythagorean theorem\n// Drag plain point assignments to update their coordinates in the editor.\n$board.setBoundingBox([-9, 9, 13, -9], true);\n\nA = point(-2, 0);\nB = point(2, 0);\nH = point(-6, -4);\nK = point(-3, -4);\nsegment(H,K) <<strokeWidth:2, strokeColor:'#34465d'>>;\nc1=circle(A,map () -> dist(H,K)) <<dash:2>>;\nc2=circle(B,map () -> sqrt(dist(A,B)^2+dist(H,K)^2)) <<dash:2>>;\nC=intersection(c1,c2,0) <<name:'C'>>;\npolygon(A,B,C) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nD=point(map () -> X(A)-(-dist(H,K)/dist(A,B))*(Y(B)-Y(A)),map () -> Y(A)+(-dist(H,K)/dist(A,B))*(X(B)-X(A))) <<name:'D', size:2, strokeColor:'#b45b27', fillColor:'#b45b27'>>;\npolygon(A,B,D) <<fillColor:'#548abd', fillOpacity:0.12, borders:<<strokeColor:'#34465d',strokeWidth:2>>>>;\nangle(B,A,C) <<name:'', radius:0.55, selection:'minor', fillColor:'#d99c46', fillOpacity:0.24, strokeColor:'#b47a2e', withLabel:true, label:<<display:'internal'>>>>;\ntext(-8,8,'I.48') <<display:'internal',fontSize:20>>;\n",
+"previousSourceHash": "dc2441722a6c714783123b529aa0cc9185c8a8e2e9c5b7c7a1068ff64c602057"
+  }
+]);
+const CAS_CALLS = new Set([
+  'simplify', 'expand', 'differentiate', 'solve', 'plot',
+  'factor', 'together', 'evaluate', 'numeric', 'substitute', 'integrate', 'limit', 'sum', 'product',
+  'determinant', 'inverse', 'transpose', 'eigenvalues',
+  'range', 'map', 'zip', 'assume', 'forget'
+]);
+const JESSIE_CALL = /\b(?:point|line|segment|circle|polygon|midpoint|intersection|perpendicular|circumcircle|glider|tangent|slider|functiongraph|curve|text|angle|map|V)\s*\(/;
+const PLAIN_MATH_FUNCTION = /(^|[^\\A-Za-z])(arcsinh|arccosh|arctanh|arcsin|arccos|arctan|sinh|cosh|tanh|sqrt|floor|ceil|sin|cos|tan|cot|sec|csc|log|ln|exp|abs)\s*\(/g;
+
+function normalizeMathSource(source) {
+  return source.replace(PLAIN_MATH_FUNCTION, (match, prefix, name) => `${prefix}\\${name}(`);
+}
+
+function displayLatex(latex) {
+  return String(latex || '')
+    .replaceAll('\\exponentialE', '\\mathrm{e}')
+    .replaceAll('\\imaginaryI', '\\mathrm{i}');
+}
+
+function splitArguments(source) {
+  const parts = [];
+  let start = 0;
+  let depth = 0;
+  let quote = '';
+  for (let i = 0; i < source.length; i += 1) {
+    const char = source[i];
+    if (quote) {
+      if (char === quote && source[i - 1] !== '\\') quote = '';
+      continue;
+    }
+    if (char === '"' || char === "'") { quote = char; continue; }
+    if ('([{'.includes(char)) depth += 1;
+    else if (')]}'.includes(char)) depth -= 1;
+    else if (char === ',' && depth === 0) { parts.push(source.slice(start, i).trim()); start = i + 1; }
+  }
+  parts.push(source.slice(start).trim());
+  return parts.filter(Boolean);
+}
+
+function callFromLine(source) {
+  const match = source.match(/^([A-Za-z][\w]*)\s*\(([\s\S]*)\)$/);
+  if (!match || !CAS_CALLS.has(match[1].toLowerCase())) return null;
+  return { name: match[1].toLowerCase(), args: splitArguments(match[2]) };
+}
+
+function casSourceFromLine(line) {
+  const source = line.trim();
+  if (!source || source.startsWith('//')) return null;
+  if (/^[{}]$/.test(source)) return null;
+  if (/^(?:\$board|for|if|while)\b/.test(source) || /<<|\.glide\s*\(/.test(source)) return null;
+  const terminatedAssignment = source.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)([^;]+?)\s*;\s*(?:\/\/.*)?$/);
+  const terminatedBody = terminatedAssignment?.[2] || '';
+  if (terminatedAssignment && /[\d+\-*/^()]/.test(terminatedBody) && !/[\[\]{}]/.test(terminatedBody)
+      && !JESSIE_CALL.test(source) && !/['"]/.test(source)) {
+    return `${terminatedAssignment[1]} = ${terminatedAssignment[2].trim()}`;
+  }
+  if (/;/.test(source)) return null;
+  const assignment = source.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)(.+)$/);
+  const body = assignment?.[2]?.trim() || source;
+  if (callFromLine(body)) return source;
+  if (JESSIE_CALL.test(source) || /['"]/.test(source)) return null;
+  return assignment || /^[\dA-Za-z_+\-*/^().,=<>\\{}\[\]|\s]+$/.test(source) ? source : null;
+}
+
+function hasMathError(json) {
+  if (!Array.isArray(json)) return false;
+  if (json[0] === 'Error') return true;
+  return json.some(hasMathError);
+}
+
+function numberValue(expression) {
+  const value = expression.N().valueOf();
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function complexValue(expression, engine) {
+  const json = expression.N().json;
+  if (!Array.isArray(json) || json[0] !== 'Complex' || json.length !== 3) return null;
+  const real = numberValue(engine.box(json[1]));
+  const imaginary = numberValue(engine.box(json[2]));
+  return real === null || imaginary === null ? null : [real, imaginary];
+}
+
+function collectionItems(expression, engine) {
+  const json = expression.json;
+  if (!Array.isArray(json) || !['List', 'Set', 'Tuple'].includes(json[0])) return null;
+  return json.slice(1).map((item) => engine.box(item));
+}
+
+function matrixLatex(expression, engine) {
+  const json = expression.json;
+  if (!Array.isArray(json) || json[0] !== 'List' || json.length < 2) return '';
+  const rows = json.slice(1);
+  if (!rows.every((row) => Array.isArray(row) && row[0] === 'List')) return '';
+  const width = rows[0].length;
+  if (width < 2 || !rows.every((row) => row.length === width)) return '';
+  return `\\begin{bmatrix}${rows.map((row) => row.slice(1).map((item) => engine.box(item).latex).join('&')).join('\\\\')}\\end{bmatrix}`;
+}
+
+function pointValues(expression, engine) {
+  const json = expression.json;
+  if (!Array.isArray(json)) return [];
+  const [operator, ...items] = json;
+  const collection = ['List', 'Set', 'Tuple'].includes(operator) ? items : [];
+  if (!collection.length) return [];
+
+  if (operator === 'List' && collection.every((item) => Array.isArray(item) && item[0] === 'List')) return [];
+  const pairs = collection.map((item) => {
+    if (!Array.isArray(item) || !['List', 'Tuple', 'Pair'].includes(item[0]) || item.length !== 3) return null;
+    const x = numberValue(engine.box(item[1]));
+    const y = numberValue(engine.box(item[2]));
+    return x === null || y === null ? null : [x, y];
+  });
+  return pairs.every(Boolean) ? pairs : [];
+}
+
+function jessieValue(expression, engine) {
+  const value = numberValue(expression);
+  if (value !== null) return Number(value.toPrecision(15)).toString();
+  if (expression.json === true || expression.json === false) return String(expression.json);
+  const json = expression.json;
+  if (!Array.isArray(json) || !['List', 'Set', 'Tuple'].includes(json[0])) return '';
+  const items = json.slice(1).map((item) => jessieValue(engine.box(item), engine));
+  return items.every(Boolean) ? `[${items.join(',')}]` : '';
+}
+
+function geometryDefinitionFromLine(line, engine, definitions) {
+  const match = line.trim().match(/^([A-Za-z_$][\w$]*)\s*=\s*(point|line|segment|circle|functiongraph)\s*\(([\s\S]*?)\)\s*(?:<<[\s\S]*>>)?\s*;?\s*$/i);
+  if (!match) return;
+  const [, name, rawKind, rawArguments] = match;
+  const kind = rawKind.toLowerCase();
+  const args = splitArguments(rawArguments);
+  const coordinates = (source) => {
+    const json = definitions.get(source.trim())?.json;
+    if (!Array.isArray(json) || json[0] !== 'Tuple' || json.length !== 3) return null;
+    const x = numberValue(engine.box(json[1]));
+    const y = numberValue(engine.box(json[2]));
+    return x === null || y === null ? null : [x, y];
+  };
+  let expression;
+
+  if (kind === 'point' && args.length >= 2) {
+    const x = numberValue(resolveExpression(args[0], engine, definitions));
+    const y = numberValue(resolveExpression(args[1], engine, definitions));
+    if (x !== null && y !== null) expression = engine.box(['Tuple', x, y]);
+  } else if (['line', 'segment'].includes(kind) && args.length >= 2) {
+    const a = coordinates(args[0]);
+    const b = coordinates(args[1]);
+    if (a && b && (a[0] !== b[0] || a[1] !== b[1])) {
+      const xCoefficient = a[1] - b[1];
+      const yCoefficient = b[0] - a[0];
+      expression = engine.box(['Equal',
+        ['Add', ['Multiply', xCoefficient, 'x'], ['Multiply', yCoefficient, 'y']],
+        xCoefficient * a[0] + yCoefficient * a[1]
+      ]).evaluate();
+    }
+  } else if (kind === 'circle' && args.length >= 2) {
+    const center = coordinates(args[0]);
+    const through = coordinates(args[1]);
+    const radius = through ? Math.hypot(through[0] - center?.[0], through[1] - center?.[1])
+      : numberValue(resolveExpression(args[1], engine, definitions));
+    if (center && radius !== null) {
+      expression = engine.box(['Equal',
+        ['Add', ['Power', ['Subtract', 'x', center[0]], 2], ['Power', ['Subtract', 'y', center[1]], 2]],
+        radius ** 2
+      ]).evaluate();
+    }
+  } else if (kind === 'functiongraph' && args.length) {
+    const quoted = args[0].match(/^(['"])([\s\S]*)\1$/);
+    if (quoted) expression = engine.box(['Equal', 'y', resolveExpression(quoted[2], engine, definitions)]).evaluate();
+  }
+
+  if (!expression) return;
+  definitions.set(name, expression);
+  engine.assign(name, expression);
+}
+
+function graphFor(expression, engine, preferredVariable = '') {
+  const complex = complexValue(expression, engine);
+  if (complex && complex[1] !== 0) return { kind: 'points', coordinates: [complex] };
+  const coordinates = pointValues(expression, engine);
+  if (coordinates.length) return { kind: 'points', coordinates };
+  if (['Equal', 'NotEqual', 'Less', 'LessEqual', 'Greater', 'GreaterEqual'].includes(expression.operator)) return null;
+  const variables = Array.from(expression.unknowns || expression.freeVariables || []);
+  if (variables.length !== 1) return null;
+  const variable = preferredVariable || variables[0];
+  const hasNumericSample = [0, 1, -1].some((value) => numberValue(expression.subs({ [variable]: value })) !== null);
+  if (!hasNumericSample) return null;
+  return { kind: 'function', variable, expression };
+}
+
+function resolveExpression(source, engine, definitions) {
+  if (/^[A-Za-z_$][\w$]*$/.test(source.trim()) && definitions.has(source.trim())) return definitions.get(source.trim());
+  let expandedSource = source;
+  for (const [name, value] of [...definitions].sort(([a], [b]) => b.length - a.length)) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    expandedSource = expandedSource.replace(new RegExp(`(^|[^A-Za-z0-9_$])${escaped}(?=$|[^A-Za-z0-9_$])`, 'g'), `$1(${value.latex})`);
+  }
+  const expression = engine.parse(normalizeMathSource(expandedSource));
+  if (hasMathError(expression.json)) throw new Error('Could not read this expression');
+  return expression.evaluate();
+}
+
+function evaluateLine(source, engine, definitions, lineIndex) {
+  const assignment = source.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)(.+)$/);
+  const name = assignment?.[1] || '';
+  const body = assignment?.[2]?.trim() || source;
+  const call = callFromLine(body);
+  let expression;
+  let latex;
+  let graph = null;
+  let forceGraph = false;
+
+  if (call?.name === 'assume') {
+    if (call.args.length !== 1) throw new Error('assume() needs one condition');
+    const condition = resolveExpression(call.args[0], engine, definitions);
+    const status = engine.assume(condition);
+    if (status === 'contradiction') throw new Error('This contradicts an earlier assumption');
+    if (status === 'not-a-predicate') throw new Error('assume() needs a condition such as x > 0');
+    expression = engine.box(true);
+    latex = status === 'tautology' ? '\\text{already assumed}' : '\\text{assumed}';
+  } else if (call?.name === 'forget') {
+    if (call.args.length !== 1 || !/^[A-Za-z_$][\w$]*$/.test(call.args[0].trim())) {
+      throw new Error('forget() needs one variable name');
+    }
+    const variable = call.args[0].trim();
+    engine.forget(variable);
+    definitions.delete(variable);
+    expression = engine.box(true);
+    latex = `\\text{forgot }${variable}`;
+  } else if (call?.name === 'range') {
+    if (call.args.length < 2 || call.args.length > 3) throw new Error('range() needs start, end and optional step');
+    const start = numberValue(resolveExpression(call.args[0], engine, definitions));
+    const end = numberValue(resolveExpression(call.args[1], engine, definitions));
+    const step = call.args[2] ? numberValue(resolveExpression(call.args[2], engine, definitions)) : 1;
+    if (start === null || end === null || step === null || step === 0) throw new Error('range() needs finite numbers and a nonzero step');
+    const values = [];
+    const movingForward = step > 0;
+    for (let index = 0; index <= 1000; index += 1) {
+      const value = start + index * step;
+      if ((movingForward && value > end + Math.abs(step) * 1e-12) || (!movingForward && value < end - Math.abs(step) * 1e-12)) break;
+      values.push(engine.box(value));
+    }
+    if (values.length > 1000) throw new Error('range() is limited to 1000 values');
+    expression = engine.box(['List', ...values]);
+    latex = expression.latex;
+  } else if (call?.name === 'map') {
+    if (![2, 3].includes(call.args.length)) throw new Error('map() needs expression, optional variable, and values');
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const variable = call.args.length === 3 ? call.args[1].trim() : Array.from(input.unknowns || input.freeVariables || [])[0];
+    if (!variable) throw new Error('map() could not determine the expression variable');
+    const values = collectionItems(resolveExpression(call.args.at(-1), engine, definitions), engine);
+    if (!values) throw new Error('map() needs a list, set or tuple of values');
+    expression = engine.box(['List', ...values.map((value) => input.subs({ [variable]: value }).evaluate())]);
+    latex = expression.latex;
+  } else if (call?.name === 'zip') {
+    if (call.args.length !== 2) throw new Error('zip() needs two collections');
+    const xs = collectionItems(resolveExpression(call.args[0], engine, definitions), engine);
+    const ys = collectionItems(resolveExpression(call.args[1], engine, definitions), engine);
+    if (!xs || !ys) throw new Error('zip() needs two lists, sets or tuples');
+    if (xs.length !== ys.length) throw new Error('zip() collections must have the same length');
+    expression = engine.box(['List', ...xs.map((x, index) => ['Tuple', x, ys[index]])]);
+    latex = expression.latex;
+    const coordinates = xs.map((x, index) => [numberValue(x), numberValue(ys[index])]);
+    if (coordinates.every(([x, y]) => x !== null && y !== null)) graph = { kind: 'points', coordinates };
+  } else if (['determinant', 'inverse', 'transpose', 'eigenvalues'].includes(call?.name)) {
+    if (call.args.length !== 1) throw new Error(`${call.name}() needs one matrix`);
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const operator = {
+      determinant: 'Determinant', inverse: 'Inverse', transpose: 'Transpose', eigenvalues: 'Eigenvalues'
+    }[call.name];
+    expression = engine.box([operator, input]).evaluate();
+    latex = expression.latex;
+  } else if (call?.name === 'solve') {
+    if (!call.args[0]) throw new Error('solve() needs an expression');
+    const variable = call.args[1]?.trim() || 'x';
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const equation = input.operator === 'Equal' ? input : engine.box(['Equal', input, 0]);
+    const solutions = equation.solve(variable).sort((a, b) => {
+      const aValue = numberValue(a);
+      const bValue = numberValue(b);
+      return aValue === null || bValue === null ? 0 : aValue - bValue;
+    });
+    expression = engine.box(['Set', ...solutions]);
+    latex = `\\left\\{${solutions.map((item) => item.latex).join(',')}\\right\\}`;
+    const coordinates = solutions.map(numberValue);
+    if (coordinates.length && coordinates.every((value) => value !== null)) {
+      graph = { kind: 'points', coordinates: coordinates.map((value) => [value, 0]) };
+    }
+  } else if (call?.name === 'substitute') {
+    if (call.args.length !== 3) throw new Error('substitute() needs an expression, variable and value');
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const variable = call.args[1].trim();
+    const replacement = resolveExpression(call.args[2], engine, definitions);
+    expression = input.subs({ [variable]: replacement }).evaluate();
+    latex = expression.latex;
+    const x = numberValue(replacement);
+    const y = numberValue(expression);
+    graph = x === null || y === null ? graphFor(expression, engine) : { kind: 'points', coordinates: [[x, y]] };
+  } else if (call?.name === 'integrate') {
+    if (![2, 4].includes(call.args.length)) throw new Error('integrate() needs expression, variable, and optional lower and upper bounds');
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const variable = call.args[1].trim();
+    if (call.args.length >= 4) {
+      const lower = resolveExpression(call.args[2], engine, definitions);
+      const upper = resolveExpression(call.args[3], engine, definitions);
+      expression = engine.box(['Integrate', input, ['Tuple', variable, lower, upper]]).evaluate();
+    } else {
+      expression = engine.box(['Integrate', input, variable]).evaluate();
+      graph = graphFor(expression, engine, variable);
+    }
+    latex = expression.latex;
+  } else if (['sum', 'product'].includes(call?.name)) {
+    if (call.args.length !== 4) throw new Error(`${call.name}() needs expression, variable, lower and upper bounds`);
+    const variable = call.args[1].trim();
+    if (!/^[A-Za-z_$][\w$]*$/.test(variable)) throw new Error(`${call.name}() needs a variable name`);
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const lower = resolveExpression(call.args[2], engine, definitions);
+    const upper = resolveExpression(call.args[3], engine, definitions);
+    const operator = call.name === 'sum' ? 'Sum' : 'Product';
+    expression = engine.box([operator, input, ['Tuple', variable, lower, upper]]).evaluate();
+    latex = expression.latex;
+    graph = graphFor(expression, engine);
+  } else if (call?.name === 'limit') {
+    if (call.args.length !== 3) throw new Error('limit() needs an expression, variable and value');
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const variable = call.args[1].trim();
+    const at = resolveExpression(call.args[2], engine, definitions);
+    expression = engine.box(['Limit', input, variable, at]).evaluate();
+    latex = expression.latex;
+    const x = numberValue(at);
+    const y = numberValue(expression);
+    if (x !== null && y !== null) graph = { kind: 'points', coordinates: [[x, y]], open: true };
+  } else {
+    const input = call ? resolveExpression(call.args[0] || '', engine, definitions) : resolveExpression(body, engine, definitions);
+    if (call?.name === 'simplify') expression = input.simplify();
+    else if (call?.name === 'expand') expression = engine.box(['Expand', input]).evaluate();
+    else if (call?.name === 'differentiate') expression = engine.box(['D', input, call.args[1]?.trim() || 'x']).evaluate();
+    else if (call?.name === 'factor') expression = engine.box(['Factor', input, ...(call.args[1] ? [call.args[1].trim()] : [])]).evaluate();
+    else if (call?.name === 'together') expression = engine.box(['Together', input]).evaluate();
+    else if (call?.name === 'evaluate') expression = input.evaluate();
+    else if (call?.name === 'numeric') {
+      const oldPrecision = engine.precision;
+      const requestedPrecision = Number(call.args[1]);
+      if (call.args[1] && (!Number.isInteger(requestedPrecision) || requestedPrecision < 2 || requestedPrecision > 1000)) {
+        throw new Error('numeric() precision must be an integer from 2 to 1000');
+      }
+      try {
+        if (call.args[1]) engine.precision = requestedPrecision;
+        expression = input.N();
+        latex = expression.latex;
+      } finally { engine.precision = oldPrecision; }
+    }
+    else expression = input;
+    forceGraph = call?.name === 'plot';
+    if (!latex) latex = expression.latex;
+    const preferredVariable = ['differentiate', 'factor'].includes(call?.name) ? call.args[1]?.trim() : '';
+    graph = graphFor(expression, engine, preferredVariable);
+  }
+
+  latex = displayLatex(matrixLatex(expression, engine) || latex);
+  if (name) {
+    definitions.set(name, expression);
+    engine.assign(name, expression);
+  }
+  const sharedValue = name ? jessieValue(expression, engine) : '';
+  return {
+    lineIndex,
+    key: name ? `name:${name}` : `line:${lineIndex}`,
+    latex,
+    graph,
+    forceGraph,
+    jessieDefinition: sharedValue ? `${name} = ${sharedValue};` : ''
+  };
+}
+
+function analyzeSource(source, ComputeEngine) {
+  const engine = new ComputeEngine();
+  const definitions = new Map();
+  const lines = source.split('\n');
+  const results = [];
+  const jessieLines = lines.slice();
+  lines.forEach((line, lineIndex) => {
+    const casSource = casSourceFromLine(line);
+    if (casSource === null) {
+      try { geometryDefinitionFromLine(line, engine, definitions); }
+      catch { /* Dynamic Jessie constructions do not need a CAS representation. */ }
+      return;
+    }
+    jessieLines[lineIndex] = '';
+    try {
+      const result = evaluateLine(casSource, engine, definitions, lineIndex);
+      results.push(result);
+      jessieLines[lineIndex] = result.jessieDefinition;
+    }
+    catch (error) {
+      results.push({ lineIndex, key: `line:${lineIndex}`, error: error?.message || String(error), graph: null, forceGraph: false });
+    }
+  });
+  return { source, lines, jessieSource: jessieLines.join('\n'), results };
+}
+
+function drawCasGraphs(board, results, enabledKeys, compileExpression) {
+  const colors = ['#2563eb', '#d97706', '#7c3aed', '#0f8b6d', '#c2416c', '#475569'];
+  let colorIndex = 0;
+  results.forEach((result) => {
+    if (!result.graph || (!result.forceGraph && !enabledKeys.has(result.key))) return;
+    const color = colors[colorIndex % colors.length];
+    colorIndex += 1;
+    if (result.graph.kind === 'points') {
+      result.graph.coordinates.forEach(([x, y], index) => board.create('point', [x, y], {
+        name: result.graph.coordinates.length > 1 ? `${index + 1}` : '',
+        size: 3,
+        strokeColor: color,
+        fillColor: result.graph.open ? '#fff' : color,
+        fixed: true
+      }));
+      return;
+    }
+    const { expression, variable } = result.graph;
+    let compiledRun = null;
+    try {
+      const compiled = compileExpression?.(expression);
+      if (compiled?.success && typeof compiled.run === 'function') compiledRun = compiled.run;
+    } catch { /* Fall back to symbolic substitution for unsupported expressions. */ }
+    board.create('functiongraph', [(x) => {
+      try {
+        const value = compiledRun ? compiledRun({ [variable]: x }) : expression.subs({ [variable]: x }).N().valueOf();
+        return typeof value === 'number' && Number.isFinite(value) ? value : NaN;
+      } catch { return NaN; }
+    }], { strokeColor: color, strokeWidth: 3 });
+  });
+}
+const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
+
+function formatNumber(value) {
+  const clean = Math.abs(value) < 1e-12 ? 0 : value;
+  return Number(clean.toFixed(6)).toString();
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function simplePointNames(code) {
+  const names = new Set();
+  const assignment = new RegExp(String.raw`^\s*([A-Za-z_$][\w$]*)\s*=\s*point\s*\(\s*${NUMBER}\s*,\s*${NUMBER}\s*\)\s*;?(?:\s*\/\/.*)?\s*$`);
+  for (const line of code.split('\n')) {
+    const match = line.match(assignment);
+    if (match) names.add(match[1]);
+  }
+  return names;
+}
+
+function replaceSimplePointCoordinates(code, name, x, y) {
+  const escapedName = escapeRegex(name);
+  const assignment = new RegExp(String.raw`^(\s*${escapedName}\s*=\s*point\s*\(\s*)(${NUMBER})(\s*,\s*)(${NUMBER})(\s*\)\s*;?(?:\s*\/\/.*)?\s*)$`);
+  const lines = code.split('\n');
+  const index = lines.findIndex((line) => assignment.test(line));
+  if (index < 0) return null;
+  const match = lines[index].match(assignment);
+  lines[index] = match[1] + formatNumber(x) + match[3] + formatNumber(y) + match[5];
+  return lines.join('\n');
+}
+
+function simpleTextPositions(code) {
+  const positions = [];
+  const literal = new RegExp(String.raw`^(\s*(?:[A-Za-z_$][\w$]*\s*=\s*)?text\s*\(\s*)(${NUMBER})(\s*,\s*)(${NUMBER})(\s*,.*)$`);
+  let objectIndex = 0;
+  code.split('\n').forEach((line, lineIndex) => {
+    const calls = line.match(/(?:^|;)\s*(?:[A-Za-z_$][\w$]*\s*=\s*)?text\s*\(/g) || [];
+    if (calls.length === 1 && literal.test(line)) positions.push({ lineIndex, objectIndex });
+    objectIndex += calls.length;
+  });
+  return positions;
+}
+
+function replaceSimpleTextCoordinates(code, lineIndex, x, y) {
+  const literal = new RegExp(String.raw`^(\s*(?:[A-Za-z_$][\w$]*\s*=\s*)?text\s*\(\s*)(${NUMBER})(\s*,\s*)(${NUMBER})(\s*,.*)$`);
+  const lines = code.split('\n');
+  const match = lines[lineIndex]?.match(literal);
+  if (!match) return null;
+  lines[lineIndex] = match[1] + formatNumber(x) + match[3] + formatNumber(y) + match[5];
+  return lines.join('\n');
+}
+
+const computeEngine = new ComputeEngine();
+
+function toJessieExpression(json) {
+  if (typeof json === 'number') return String(json);
+  if (typeof json === 'string') return json;
+  if (!Array.isArray(json) || !json.length) throw new Error('Unsupported CAS result');
+  const [operator, ...operands] = json;
+  const values = operands.map(toJessieExpression);
+  switch (operator) {
+    case 'Add': return `(${values.join('+')})`;
+    case 'Multiply': return `(${values.join('*')})`;
+    case 'Power': return `(${values[0]}^${values[1]})`;
+    case 'Divide':
+    case 'Rational': return `(${values[0]}/${values[1]})`;
+    case 'Negate': return `(-${values[0]})`;
+    case 'Sqrt': return `sqrt(${values[0]})`;
+    default: return `${String(operator).toLowerCase()}(${values.join(',')})`;
+  }
+}
+
+// CortexJS helpers exposed as ordinary JessieCode functions.
+JXG.JessieCode.prototype.addBuiltIn('simplify', (source) =>
+  toJessieExpression(computeEngine.parse(String(source)).simplify().json)
+);
+JXG.JessieCode.prototype.addBuiltIn('expand', (source) => {
+  const expression = computeEngine.parse(String(source));
+  return toJessieExpression(computeEngine.box(['Expand', expression]).evaluate().json);
+});
+JXG.JessieCode.prototype.addBuiltIn('differentiate', (source, variable) => {
+  const expression = computeEngine.parse(String(source));
+  return toJessieExpression(computeEngine.box(['D', expression, variable || 'x']).evaluate().json);
+});
+JXG.JessieCode.prototype.addBuiltIn('solve', (source, variable) =>
+  computeEngine.parse(String(source)).solve(variable || 'x').map((solution) => {
+    const value = solution.N().valueOf();
+    return typeof value === 'number' ? value : solution.latex;
+  })
+);
+JXG.JessieCode.prototype.addBuiltIn('points', function (coordinates, prefix) {
+  if (!Array.isArray(coordinates)) throw new Error('points() expects an array of values or [x, y] coordinates');
+  const namePrefix = prefix == null ? 'P' : String(prefix);
+  return coordinates.map((item, index) => {
+    const coordinate = Array.isArray(item) ? item : [item, 0];
+    if (!Array.isArray(item) && !Number.isFinite(item)) return null;
+    if (!Array.isArray(coordinate) || coordinate.length < 2) {
+      throw new Error('Each points() coordinate must be [x, y]');
+    }
+    return this.board.create('point', [coordinate[0], coordinate[1]], {
+      name: namePrefix ? `${namePrefix}${index + 1}` : ''
+    });
+  }).filter(Boolean);
+});
+
+const editor = document.getElementById('editor');
+const status = document.getElementById('status');
+const points = document.getElementById('points');
+const hint = document.getElementById('hint');
+const errorMarker = document.getElementById('error-line-marker');
+const autocomplete = document.getElementById('autocomplete');
+const casResults = document.getElementById('cas-results');
+const casResultLines = document.getElementById('cas-result-lines');
+const layout = document.getElementById('layout');
+const splitter = document.getElementById('splitter');
+const pageSelect = document.getElementById('page-select');
+const pageName = document.getElementById('page-name');
+const addPage = document.getElementById('add-page');
+const fullscreenButton = document.getElementById('fullscreen-button');
+const programLink = document.getElementById('program-link');
+const boardPane = document.getElementById('board-pane');
+const canvasZoomIn = document.getElementById('canvas-zoom-in');
+const canvasZoomOut = document.getElementById('canvas-zoom-out');
+const canvasReset = document.getElementById('canvas-reset');
+const canvasFullscreen = document.getElementById('canvas-fullscreen');
+
+const STORAGE_KEY = 'jessiepage-state-v1';
+const DEFAULT_BBOX = [-6, 6, 6, -6];
+const BUILTIN_EXAMPLES_VERSION = 18;
+const INPUT_RENDER_MS = 80;
+const SAVE_IDLE_MS = 250;
+const ERROR_IDLE_MS = 700;
+const AUTOCOMPLETE_WORDS = [
+  ['point', 'point(', 'geometry'],
+  ['line', 'line(', 'geometry'],
+  ['segment', 'segment(', 'geometry'],
+  ['circle', 'circle(', 'geometry'],
+  ['polygon', 'polygon(', 'geometry'],
+  ['midpoint', 'midpoint(', 'geometry'],
+  ['intersection', 'intersection(', 'geometry'],
+  ['perpendicular', 'perpendicular(', 'geometry'],
+  ['circumcircle', 'circumcircle(', 'geometry'],
+  ['glider', 'glider(', 'geometry'],
+  ['tangent', 'tangent(', 'geometry'],
+  ['slider', 'slider(', 'control'],
+  ['functiongraph', 'functiongraph(', 'plot'],
+  ['curve', 'curve(', 'plot'],
+  ['simplify', 'simplify(', 'CAS'],
+  ['expand', 'expand(', 'CAS'],
+  ['differentiate', 'differentiate(', 'CAS'],
+  ['solve', 'solve(', 'CAS'],
+  ['factor', 'factor(', 'CAS'],
+  ['together', 'together(', 'CAS'],
+  ['evaluate', 'evaluate(', 'CAS'],
+  ['numeric', 'numeric(', 'CAS'],
+  ['substitute', 'substitute(', 'CAS'],
+  ['integrate', 'integrate(', 'CAS'],
+  ['limit', 'limit(', 'CAS'],
+  ['sum', 'sum(', 'CAS'],
+  ['product', 'product(', 'CAS'],
+  ['determinant', 'determinant(', 'CAS'],
+  ['inverse', 'inverse(', 'CAS'],
+  ['transpose', 'transpose(', 'CAS'],
+  ['eigenvalues', 'eigenvalues(', 'CAS'],
+  ['range', 'range(', 'CAS'],
+  ['map', 'map(', 'CAS'],
+  ['zip', 'zip(', 'CAS'],
+  ['assume', 'assume(', 'CAS'],
+  ['forget', 'forget(', 'CAS'],
+  ['plot', 'plot(', 'CAS'],
+  ['map', 'map (x) -> ', 'language'],
+  ['sin', 'sin(', 'math'],
+  ['cos', 'cos(', 'math'],
+  ['PI', 'PI', 'constant'],
+  ['V', 'V(', 'value']
+].map(([label, insert, kind]) => ({ label, insert, kind }));
+
+let board;
+let renderTimer;
+let saveTimer;
+let errorLine = null;
+let state = { pages: [], currentPageId: null };
+let autocompleteItems = [];
+let autocompleteIndex = 0;
+let autocompleteToken = null;
+let lastCasAnalysis = null;
+const textMeasureCanvas = document.createElement('canvas');
+
+const boardOptions = {
+  boundingbox: DEFAULT_BBOX,
+  axis: true,
+  keepaspectratio: true,
+  showCopyright: false,
+  showNavigation: false,
+  browserPan: false,
+  pan: { enabled: true, needShift: false, needTwoFingers: false },
+  zoom: { enabled: true, wheel: true, needShift: false, pinch: true, center: 'auto' },
+  resize: { enabled: true, throttle: 20 }
+};
+
+function setStatus(kind, text, title = text) { status.className = kind; status.textContent = text; status.title = title; }
+function newId() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
+function currentPage() { return state.pages.find((p) => p.id === state.currentPageId) || state.pages[0] || null; }
+function makePage(name, source) { return { id: newId(), name, source, lastGoodSource: source, bbox: DEFAULT_BBOX.slice(), casGraphs: [] }; }
+
+function saveState() {
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (err) { console.warn(err); setStatus('error', 'local save failed'); }
+}
+
+function queueSaveState() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveState();
+    updateProgramLink();
+  }, SAVE_IDLE_MS);
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.pages) || !parsed.pages.length) return false;
+    state = parsed;
+    if (!state.pages.some((p) => p.id === state.currentPageId)) state.currentPageId = state.pages[0].id;
+    return true;
+  } catch (err) { console.warn(err); return false; }
+}
+
+function updateProgramLink() {
+  const params = new URLSearchParams();
+  params.set('new', '1');
+  params.set('name', currentPage()?.name || 'Linked graph');
+  params.set('code', editor.value || '');
+  const graphKeys = currentPage()?.casGraphs || [];
+  if (graphKeys.length) params.set('graphs', graphKeys.join(','));
+  programLink.href = `${location.origin}${location.pathname}${location.search}#${params.toString()}`;
+}
+
+function linkedPageFromHash() {
+  if (!location.hash || location.hash.length < 2) return null;
+  const params = new URLSearchParams(location.hash.slice(1));
+  if (params.get('new') !== '1' || !params.has('code')) return null;
+  const page = makePage((params.get('name') || 'Linked graph').slice(0, 60), params.get('code') || '');
+  page.casGraphs = (params.get('graphs') || '').split(',').filter(Boolean);
+  return page;
+}
+
+function consumeLinkedPageHash() { history.replaceState(null, '', `${location.pathname}${location.search}`); }
+
+function refreshPageControls() {
+  pageSelect.replaceChildren();
+  const groups = new Map();
+  for (const label of ['My pages', 'Examples', 'Euclid · Postulates', 'Euclid · Common notions', 'Euclid · Book I']) {
+    const group = document.createElement('optgroup');
+    group.label = label;
+    groups.set(label, group);
+  }
+  for (const page of state.pages) {
+    const key = page.builtinKey || '';
+    const label = key.startsWith('euclid-postulate-') ? 'Euclid · Postulates'
+      : key.startsWith('euclid-common-notion-') ? 'Euclid · Common notions'
+      : key.startsWith('euclid-i-') ? 'Euclid · Book I'
+      : key ? 'Examples' : 'My pages';
+    const option = document.createElement('option');
+    option.value = page.id;
+    option.textContent = page.name;
+    groups.get(label).appendChild(option);
+  }
+  for (const group of groups.values()) {
+    if (group.children.length) pageSelect.appendChild(group);
+  }
+  pageSelect.value = state.currentPageId;
+  pageName.value = currentPage()?.name || '';
+  updateProgramLink();
+}
+
+function nextPageName() {
+  let n = 1;
+  const used = new Set(state.pages.map((p) => p.name));
+  while (used.has(`Page ${n}`)) n += 1;
+  return `Page ${n}`;
+}
+
+function rememberSource(source) {
+  const page = currentPage();
+  if (!page) return;
+  page.source = source;
+  queueSaveState();
+}
+
+function rememberView() {
+  const page = currentPage();
+  if (!page || !board) return;
+  const bbox = board.getBoundingBox();
+  if (Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)) { page.bbox = bbox.slice(); queueSaveState(); }
+}
+
+function enabledCasKeys() {
+  return new Set(currentPage()?.casGraphs || []);
+}
+
+function syncCasResultsScroll() {
+  casResults.scrollTop = editor.scrollTop;
+}
+
+function expandedTabs(source, size = 2) {
+  let column = 0;
+  let result = '';
+  for (const character of source) {
+    if (character !== '\t') { result += character; column += 1; continue; }
+    const spaces = size - (column % size);
+    result += ' '.repeat(spaces);
+    column += spaces;
+  }
+  return result;
+}
+
+function positionCasConnectors(analysis = lastCasAnalysis) {
+  if (!analysis) return;
+  const context = textMeasureCanvas.getContext('2d');
+  if (!context) return;
+  const style = getComputedStyle(editor);
+  context.font = `${style.fontSize} ${style.fontFamily}`;
+  const editorLeft = editor.getBoundingClientRect().left;
+  const textLeft = editorLeft + (Number.parseFloat(style.paddingLeft) || 0) - editor.scrollLeft;
+  Array.from(casResultLines.children).forEach((row, lineIndex) => {
+    const bubble = row.querySelector('.cas-result-bubble');
+    if (!bubble) return;
+    const textWidth = context.measureText(expandedTabs(analysis.lines[lineIndex] || '')).width;
+    const gap = 6;
+    const width = Math.max(0, bubble.getBoundingClientRect().left - textLeft - textWidth - gap);
+    bubble.style.setProperty('--connector-width', `${width}px`);
+  });
+}
+
+function renderCasResults(analysis) {
+  lastCasAnalysis = analysis;
+  const style = getComputedStyle(editor);
+  const lineHeight = Number.parseFloat(style.lineHeight) || 22;
+  const paddingTop = Number.parseFloat(style.paddingTop) || 0;
+  const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
+  const byLine = new Map(analysis.results.map((result) => [result.lineIndex, result]));
+  const selected = enabledCasKeys();
+  casResultLines.replaceChildren();
+  casResultLines.style.setProperty('--cas-line-height', `${lineHeight}px`);
+  casResultLines.style.paddingTop = `${paddingTop}px`;
+  casResultLines.style.paddingBottom = `${paddingBottom}px`;
+
+  analysis.lines.forEach((unused, lineIndex) => {
+    const row = document.createElement('div');
+    const result = byLine.get(lineIndex);
+    row.className = `cas-result-line${result ? ' has-result' : ''}${result?.error ? ' cas-error' : ''}`;
+    const bubble = document.createElement('div');
+    bubble.className = 'cas-result-bubble';
+    if (result?.error) {
+      bubble.textContent = result.error;
+      bubble.title = result.error;
+      row.appendChild(bubble);
+    } else if (result) {
+      const formula = document.createElement('span');
+      formula.className = 'cas-formula';
+      formula.title = result.latex;
+      katex.render(result.latex, formula, { throwOnError: false, displayMode: false, strict: false });
+      bubble.appendChild(formula);
+      if (result.graph) {
+        const label = document.createElement('label');
+        label.className = 'graph-toggle';
+        label.title = result.forceGraph ? 'Graph enabled by plot() in the source' : 'Show this result on the shared graph';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = result.forceGraph || selected.has(result.key);
+        input.disabled = result.forceGraph;
+        input.setAttribute('aria-label', 'Graph this result');
+        const switchShape = document.createElement('span');
+        switchShape.className = 'graph-switch';
+        const text = document.createElement('span');
+        text.textContent = 'Graph';
+        label.append(input, switchShape, text);
+        input.addEventListener('change', () => {
+          const page = currentPage();
+          if (!page) return;
+          const keys = new Set(page.casGraphs || []);
+          if (input.checked) keys.add(result.key); else keys.delete(result.key);
+          page.casGraphs = Array.from(keys);
+          saveState();
+          render(editor.value, page.bbox, true);
+        });
+        bubble.appendChild(label);
+      }
+      row.appendChild(bubble);
+    }
+    casResultLines.appendChild(row);
+  });
+  syncCasResultsScroll();
+  positionCasConnectors(analysis);
+}
+
+function validate(code) {
+  let testBoard;
+  try {
+    testBoard = JXG.JSXGraph.initBoard('validator', { ...boardOptions, axis: false, pan: { enabled: false }, zoom: { enabled: false }, resize: { enabled: false } });
+    testBoard.jc.parse(code);
+    testBoard.update();
+  } finally { if (testBoard) JXG.JSXGraph.freeBoard(testBoard); }
+}
+
+function validateAllBuiltinPages() {
+  const failures = [];
+  for (const example of BUILTIN_EXAMPLES) {
+    try {
+      const analysis = analyzeSource(example.source, ComputeEngine);
+      const casErrors = analysis.results.filter((result) => result.error);
+      if (casErrors.length) throw new Error(casErrors.map((result) => result.error).join('; '));
+      validate(analysis.jessieSource);
+    } catch (error) { failures.push(`${example.key}: ${error?.message || error}`); }
+  }
+  document.documentElement.dataset.builtinValidation = failures.length ? 'failed' : 'ok';
+  document.documentElement.dataset.builtinCount = String(BUILTIN_EXAMPLES.length);
+  if (failures.length) {
+    document.documentElement.dataset.builtinFailures = failures.join(' | ');
+    console.error('Built-in validation failed', failures);
+  }
+}
+
+async function installBuiltinExamples(selectBasics = false) {
+  if ((state.builtinExamplesVersion || 0) >= BUILTIN_EXAMPLES_VERSION) return;
+  const existing = new Set(state.pages.map((p) => p.builtinKey).filter(Boolean));
+  let basicsId = null;
+  for (const example of BUILTIN_EXAMPLES) {
+    if (existing.has(example.key)) {
+      const page = state.pages.find((p) => p.builtinKey === example.key);
+      // Upgrade only pristine earlier built-in examples. Preserve edited pages.
+      const previousHashes = example.previousSourceHashes || (example.previousSourceHash ? [example.previousSourceHash] : []);
+      if (previousHashes.length && page.source === page.lastGoodSource && globalThis.crypto?.subtle) {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(page.source));
+        const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+        if (previousHashes.includes(hash)) {
+          try {
+            validate(analyzeSource(example.source, ComputeEngine).jessieSource);
+            page.source = example.source;
+            page.lastGoodSource = example.source;
+          } catch (err) { console.warn(`Keeping previous example ${example.key}`, err); }
+        }
+      }
+      continue;
+    }
+    try {
+      validate(analyzeSource(example.source, ComputeEngine).jessieSource);
+      const page = makePage(example.name, example.source);
+      page.builtinKey = example.key;
+      page.bbox = example.bbox.slice();
+      state.pages.push(page);
+      if (example.key === 'basics') basicsId = page.id;
+    } catch (err) { console.warn(`Skipping invalid built-in example ${example.key}`, err); }
+  }
+  state.builtinExamplesVersion = BUILTIN_EXAMPLES_VERSION;
+  if (selectBasics && basicsId) state.currentPageId = basicsId;
+  saveState();
+}
+
+function parseErrorLine(message) {
+  const match = String(message).match(/Parse error on line\s+(\d+)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function positionErrorMarker() {
+  if (!errorLine) { errorMarker.style.display = 'none'; return; }
+  const style = getComputedStyle(editor);
+  const lineHeight = Number.parseFloat(style.lineHeight) || 22;
+  const top = (Number.parseFloat(style.paddingTop) || 0) + (errorLine - 1) * lineHeight - editor.scrollTop;
+  errorMarker.style.height = `${lineHeight}px`;
+  errorMarker.style.top = `${top}px`;
+  errorMarker.style.display = (top + lineHeight < 0 || top > editor.clientHeight) ? 'none' : 'block';
+}
+
+function clearError() {
+  errorLine = null;
+  errorMarker.style.display = 'none';
+  hint.className = 'hint';
+  hint.textContent = 'Autosaved locally · drag canvas to pan · use board controls or wheel/pinch to zoom · drag simple points or text to edit source';
+}
+
+function showError(err) {
+  const message = err?.message || String(err);
+  errorLine = parseErrorLine(message);
+  positionErrorMarker();
+  hint.className = 'hint error';
+  hint.textContent = errorLine ? `Line ${errorLine}: ${message.split('\n')[0]}` : message.split('\n')[0];
+  setStatus('error', errorLine ? `line ${errorLine}` : 'error', message);
+}
+
+function applyReadback(source) {
+  if (source == null) return false;
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  editor.value = source;
+  editor.setSelectionRange(start, end);
+  rememberSource(source);
+  return true;
+}
+
+function syncSimplePointToSource(name, x, y) {
+  return applyReadback(replaceSimplePointCoordinates(editor.value, name, x, y));
+}
+
+function namedPoints() {
+  if (!board) return [];
+  return board.objectsList.filter((el) => el && (el.elType === 'point' || el.elType === 'glider') && el.name && typeof el.X === 'function' && typeof el.Y === 'function' && Number.isFinite(el.X()) && Number.isFinite(el.Y())).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function updatePointReadback() {
+  const list = namedPoints();
+  points.textContent = list.length ? list.map((p) => `${p.name} = (${formatNumber(p.X())}, ${formatNumber(p.Y())})`).join('\n') : 'No named points';
+}
+
+function bindSimplePointSourceSync(code) {
+  const writable = simplePointNames(code);
+  for (const point of namedPoints()) {
+    if (!writable.has(point.name)) continue;
+    point.on('drag', () => { syncSimplePointToSource(point.name, point.X(), point.Y()); updatePointReadback(); });
+    point.on('up', () => {
+      syncSimplePointToSource(point.name, point.X(), point.Y());
+      updatePointReadback();
+      render(editor.value, currentPage()?.bbox, false);
+    });
+  }
+}
+
+function bindSimpleTextSourceSync(code, textObjects) {
+  for (const position of simpleTextPositions(code)) {
+    const textObject = textObjects[position.objectIndex];
+    if (!textObject) continue;
+    const sync = () => applyReadback(replaceSimpleTextCoordinates(
+      editor.value,
+      position.lineIndex,
+      textObject.X(),
+      textObject.Y()
+    ));
+    textObject.on('drag', sync);
+    textObject.on('up', () => {
+      sync();
+      render(editor.value, currentPage()?.bbox, false);
+    });
+  }
+}
+
+function makeBoard(code, bbox, casAnalysis = null) {
+  if (board) JXG.JSXGraph.freeBoard(board);
+  board = JXG.JSXGraph.initBoard('board', { ...boardOptions, boundingbox: Array.isArray(bbox) ? bbox : DEFAULT_BBOX });
+  board.jc.parse(code);
+  const sourceTexts = board.objectsList.filter((element) =>
+    element?.elType === 'text' && typeof element.X === 'function' && typeof element.Y === 'function'
+  );
+  if (casAnalysis) drawCasGraphs(board, casAnalysis.results, enabledCasKeys(), compile);
+  board.on('update', updatePointReadback);
+  board.on('boundingbox', rememberView);
+  board.update();
+  bindSimplePointSourceSync(code);
+  bindSimpleTextSourceSync(code, sourceTexts);
+  updatePointReadback();
+}
+
+function render(code, bbox, showErrors = true) {
+  const casAnalysis = analyzeSource(code, ComputeEngine);
+  renderCasResults(casAnalysis);
+  try {
+    validate(casAnalysis.jessieSource);
+    makeBoard(casAnalysis.jessieSource, bbox, casAnalysis);
+    const page = currentPage();
+    if (page) { page.lastGoodSource = code; page.source = code; saveState(); }
+    clearError();
+    updateProgramLink();
+    const casErrors = casAnalysis.results.filter((result) => result.error).length;
+    setStatus(casErrors ? 'error' : 'ok', casErrors ? `${casErrors} CAS error${casErrors === 1 ? '' : 's'}` : 'saved');
+    return true;
+  } catch (err) {
+    if (showErrors) {
+      showError(err);
+      console.error(err);
+    }
+    updateProgramLink();
+    return false;
+  }
+}
+
+function autocompleteActive() {
+  return autocomplete.classList.contains('visible') && autocompleteItems.length > 0;
+}
+
+function deferError() {
+  clearTimeout(renderTimer);
+  clearError();
+  setStatus('pending', 'typing…');
+  renderTimer = setTimeout(() => render(editor.value, currentPage()?.bbox, true), ERROR_IDLE_MS);
+}
+
+function processEditorInput(event) {
+  clearTimeout(renderTimer);
+  rememberSource(editor.value);
+  if (event?.inputType === 'insertFromPaste') hideAutocomplete();
+  else updateAutocomplete();
+  clearError();
+  setStatus('pending', autocompleteActive() ? 'completing…' : 'checking…');
+  renderTimer = setTimeout(() => {
+    if (render(editor.value, currentPage()?.bbox, false)) return;
+    deferError();
+  }, INPUT_RENDER_MS);
+}
+
+function validateNow() {
+  clearTimeout(renderTimer);
+  render(editor.value, currentPage()?.bbox, true);
+}
+
+function showCurrentPage() {
+  clearTimeout(renderTimer);
+  hideAutocomplete();
+  const page = currentPage();
+  if (!page) return;
+  editor.value = page.source || '';
+  if (!render(editor.value, page.bbox) && page.lastGoodSource && page.lastGoodSource !== page.source) {
+    try {
+      const fallback = analyzeSource(page.lastGoodSource, ComputeEngine);
+      makeBoard(fallback.jessieSource, page.bbox, fallback);
+    } catch (err) { console.error(err); }
+  }
+  refreshPageControls();
+}
+
+function sourceSymbols() {
+  const seen = new Set();
+  const out = [];
+  const re = /^\s*([A-Za-z_$][\w$]*)\s*=/gm;
+  let match;
+  while ((match = re.exec(editor.value)) !== null) {
+    const label = match[1];
+    if (seen.has(label)) continue;
+    seen.add(label);
+    out.push({ label, insert: label, kind: 'name' });
+  }
+  return out;
+}
+
+function tokenAtCaret() {
+  if (editor.selectionStart !== editor.selectionEnd) return null;
+  const caret = editor.selectionStart;
+  const match = editor.value.slice(0, caret).match(/([A-Za-z_$][\w$]*)$/);
+  if (!match) return null;
+  return { text: match[1], start: caret - match[1].length, end: caret };
+}
+
+function hideAutocomplete() {
+  autocomplete.classList.remove('visible');
+  autocomplete.replaceChildren();
+  autocompleteItems = [];
+  autocompleteIndex = 0;
+  autocompleteToken = null;
+}
+
+function drawAutocomplete() {
+  autocomplete.replaceChildren();
+  autocompleteItems.forEach((item, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `autocomplete-item${index === autocompleteIndex ? ' selected' : ''}`;
+    button.setAttribute('role', 'option');
+    button.setAttribute('aria-selected', index === autocompleteIndex ? 'true' : 'false');
+    const name = document.createElement('span');
+    name.className = 'autocomplete-name';
+    name.textContent = item.label;
+    const kind = document.createElement('span');
+    kind.className = 'autocomplete-kind';
+    kind.textContent = item.kind;
+    button.append(name, kind);
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      acceptAutocomplete(index);
+    });
+    autocomplete.appendChild(button);
+  });
+  autocomplete.classList.toggle('visible', autocompleteItems.length > 0);
+}
+
+function updateAutocomplete(force = false) {
+  if (document.activeElement !== editor) { hideAutocomplete(); return; }
+  const token = tokenAtCaret();
+  if (!token || (!force && token.text.length < 1)) { hideAutocomplete(); return; }
+  const query = token.text.toLowerCase();
+  const seen = new Set();
+  const candidates = [...sourceSymbols(), ...AUTOCOMPLETE_WORDS]
+    .filter((item) => {
+      const key = item.label.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      if (force && !query) return true;
+      if (!key.startsWith(query)) return false;
+      return key !== query || item.insert !== item.label;
+    })
+    .slice(0, 7);
+  autocompleteToken = token;
+  autocompleteItems = candidates;
+  autocompleteIndex = Math.min(autocompleteIndex, Math.max(0, candidates.length - 1));
+  drawAutocomplete();
+  if (candidates.length) {
+    clearTimeout(renderTimer);
+    clearError();
+    setStatus('pending', 'completing…');
+  }
+}
+
+function acceptAutocomplete(index = autocompleteIndex) {
+  const item = autocompleteItems[index];
+  const token = autocompleteToken;
+  if (!item || !token) return;
+  editor.setRangeText(item.insert, token.start, token.end, 'end');
+  hideAutocomplete();
+  editor.focus();
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+async function initialize() {
+  if (new URLSearchParams(location.search).has('validate-builtins')) {
+    validateAllBuiltinPages();
+    return;
+  }
+  const hadState = loadState();
+  if (!hadState) {
+    let source = '// New construction\nA = point(-2, 0);\nB = point(2, 0);\nline(A, B);\n';
+    try { const response = await fetch('./construction.jessie', { cache: 'no-store' }); if (response.ok) source = await response.text(); }
+    catch (err) { console.warn(err); }
+    const page = makePage('Page 1', source);
+    state.pages = [page];
+    state.currentPageId = page.id;
+    saveState();
+  }
+  // Repair literal HTML entities in known captions, including edited saved copies.
+  // Replace only the exact original line; keep all surrounding user edits.
+  for (const page of state.pages) {
+    if (!Array.isArray(page.casGraphs)) page.casGraphs = [];
+    for (const fix of [{"key": "euclid-postulate-05", "before": "text(-9,-5.5,'Here α + β < 180°: the lines meet on the right.') <<display:'internal',fontSize:16>>;", "after": "text(-9,-5.5,'Here α + β < 180°: the lines meet on the right.') <<display:'html',fontSize:16>>;"}, {"key": "euclid-common-notion-05", "before": "text(-9,-4,'AB = AC + CB, with CB > 0; hence AB > AC.') <<display:'internal',fontSize:16>>;", "after": "text(-9,-4,'AB = AC + CB, with CB > 0; hence AB > AC.') <<display:'html',fontSize:16>>;"}]) {
+      if (page.builtinKey !== fix.key) continue;
+      for (const field of ['source', 'lastGoodSource']) {
+        if (typeof page[field] === 'string') page[field] = page[field].split(fix.before).join(fix.after);
+      }
+    }
+  }
+  await installBuiltinExamples(!hadState);
+  const linkedPage = linkedPageFromHash();
+  if (linkedPage) {
+    state.pages.push(linkedPage);
+    state.currentPageId = linkedPage.id;
+    saveState();
+    consumeLinkedPageHash();
+  }
+  refreshPageControls();
+  showCurrentPage();
+}
+
+function setSplitFromPointer(event) {
+  const rect = layout.getBoundingClientRect();
+  if (window.matchMedia('(max-width: 760px)').matches) {
+    const height = Math.max(43, Math.min(rect.height, event.clientY - rect.top));
+    document.documentElement.style.setProperty('--editor-height', `${height}px`);
+    localStorage.setItem('jessiepage-editor-height', String(height));
+  } else {
+    const width = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    document.documentElement.style.setProperty('--editor-width', `${width}px`);
+    localStorage.setItem('jessiepage-editor-width', String(width));
+  }
+  if (board) board.updateContainerDims();
+  positionCasConnectors();
+}
+
+async function toggleFullscreen(target) {
+  try {
+    const active = document.fullscreenElement || document.webkitFullscreenElement || null;
+    if (active === target) {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } else {
+      if (target.requestFullscreen) await target.requestFullscreen();
+      else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
+      else throw new Error('Fullscreen is not supported by this browser');
+    }
+  } catch (err) { setStatus('error', 'fullscreen', err?.message || String(err)); }
+}
+
+function updateFullscreenButtons() {
+  const active = document.fullscreenElement || document.webkitFullscreenElement || null;
+  const pageFull = active === document.documentElement;
+  const canvasFull = active === boardPane;
+  fullscreenButton.textContent = pageFull ? '×' : '⛶';
+  fullscreenButton.title = pageFull ? 'Exit fullscreen' : 'Enter fullscreen';
+  canvasFullscreen.textContent = canvasFull ? '×' : '⛶';
+  canvasFullscreen.title = canvasFull ? 'Exit canvas fullscreen' : 'Canvas fullscreen';
+  setTimeout(() => { if (board) board.updateContainerDims(); }, 50);
+}
+
+splitter.addEventListener('pointerdown', (event) => {
+  event.preventDefault();
+  splitter.classList.add('dragging');
+  splitter.setPointerCapture(event.pointerId);
+  const move = (e) => setSplitFromPointer(e);
+  const stop = () => {
+    splitter.classList.remove('dragging');
+    splitter.removeEventListener('pointermove', move);
+    splitter.removeEventListener('pointerup', stop);
+    splitter.removeEventListener('pointercancel', stop);
+  };
+  splitter.addEventListener('pointermove', move);
+  splitter.addEventListener('pointerup', stop);
+  splitter.addEventListener('pointercancel', stop);
+});
+
+pageSelect.addEventListener('change', () => { rememberSource(editor.value); rememberView(); state.currentPageId = pageSelect.value; saveState(); showCurrentPage(); });
+pageName.addEventListener('input', () => {
+  const page = currentPage();
+  if (!page) return;
+  page.name = pageName.value || 'Untitled';
+  saveState();
+  const option = pageSelect.querySelector(`option[value="${CSS.escape(page.id)}"]`);
+  if (option) option.textContent = page.name;
+  updateProgramLink();
+});
+pageName.addEventListener('blur', () => {
+  const page = currentPage();
+  if (!page) return;
+  page.name = pageName.value.trim() || 'Untitled';
+  pageName.value = page.name;
+  saveState();
+  refreshPageControls();
+});
+addPage.addEventListener('click', () => {
+  rememberSource(editor.value);
+  rememberView();
+  const page = makePage(nextPageName(), '// New construction\n');
+  state.pages.push(page);
+  state.currentPageId = page.id;
+  saveState();
+  showCurrentPage();
+  pageName.focus();
+  pageName.select();
+});
+
+fullscreenButton.addEventListener('click', () => toggleFullscreen(document.documentElement));
+canvasFullscreen.addEventListener('click', () => toggleFullscreen(boardPane));
+canvasZoomIn.addEventListener('click', () => { if (board) { board.zoomIn(); rememberView(); } });
+canvasZoomOut.addEventListener('click', () => { if (board) { board.zoomOut(); rememberView(); } });
+canvasReset.addEventListener('click', () => { if (board) { board.setBoundingBox(DEFAULT_BBOX, true); board.fullUpdate(); rememberView(); } });
+document.addEventListener('fullscreenchange', updateFullscreenButtons);
+document.addEventListener('webkitfullscreenchange', updateFullscreenButtons);
+
+editor.addEventListener('input', processEditorInput);
+editor.addEventListener('scroll', () => { positionErrorMarker(); syncCasResultsScroll(); positionCasConnectors(); });
+window.addEventListener('resize', () => positionCasConnectors());
+editor.addEventListener('click', () => updateAutocomplete());
+editor.addEventListener('blur', () => setTimeout(() => {
+  hideAutocomplete();
+  validateNow();
+}, 80));
+editor.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.code === 'Space') {
+    event.preventDefault();
+    updateAutocomplete(true);
+    return;
+  }
+  if (!autocomplete.classList.contains('visible')) return;
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    autocompleteIndex = (autocompleteIndex + 1) % autocompleteItems.length;
+    drawAutocomplete();
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    autocompleteIndex = (autocompleteIndex - 1 + autocompleteItems.length) % autocompleteItems.length;
+    drawAutocomplete();
+  } else if (event.key === 'Tab' || event.key === 'Enter') {
+    event.preventDefault();
+    acceptAutocomplete();
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    hideAutocomplete();
+    if (!render(editor.value, currentPage()?.bbox, false)) deferError();
+  }
+});
+
+const savedWidth = Number(localStorage.getItem('jessiepage-editor-width'));
+const savedHeight = Number(localStorage.getItem('jessiepage-editor-height'));
+if (Number.isFinite(savedWidth) && savedWidth >= 0) document.documentElement.style.setProperty('--editor-width', `${savedWidth}px`);
+if (Number.isFinite(savedHeight) && savedHeight >= 43) document.documentElement.style.setProperty('--editor-height', `${savedHeight}px`);
+
+initialize();
+  </script>
+</body>
+</html>

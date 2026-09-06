@@ -16,7 +16,7 @@ CAS results are rendered beside their source lines. The source remains a continu
 - Shared definitions across later CAS lines
 - Compatible values shared between CortexJS and JessieCode
 - Editable browser-local pages, autosave, and shareable program links
-- Source readback when simple points such as `A = point(-2, 1);` are dragged
+- Source readback when simple points or literal-position text widgets are dragged
 - Euclid's five postulates, five common notions, and all 48 propositions of Book I
 - Separate examples for algebra, calculus, matrices, complex numbers, sampled points, sums, and products
 
@@ -125,6 +125,15 @@ Built-in pages are grouped into general examples, Euclid postulates, common noti
 
 The **Link** action encodes the current source and selected graphs in the URL so the program can be opened as a new page. It does not upload saved pages to a server.
 
+Dragging a standalone text widget with literal coordinates updates those coordinates in the source, just like a simple assigned point:
+
+```jessiecode
+title = text(-4, 5, 'Move me');
+text(-4, -5, map () -> 'Length = ' + dist(A, B));
+```
+
+The text may be static or dynamic. Computed positions such as `text(map () -> X(A), ...)` remain controlled by their expressions and are not rewritten.
+
 ## Development
 
 Requirements:
@@ -170,6 +179,7 @@ When adding or removing built-in pages, update the expected built-in count in `t
 | `index.html` | Application shell and external browser dependencies |
 | `app.js` | Editor, pages, persistence, JSXGraph lifecycle, and interaction |
 | `cas.js` | CAS detection, evaluation, graph descriptions, and Jessie/CAS bridge |
+| `readback.js` | Literal point and text coordinate source readback |
 | `examples.js` | Built-in sample and Euclid page registry |
 | `euclid/` | Standalone JessieCode sources for Euclid Book I |
 | `styles.css` | Responsive editor and canvas styling |
