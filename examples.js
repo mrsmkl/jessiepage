@@ -79,11 +79,11 @@ z = 3 + 2*i
 w = (1-i)*z
 z
 w` },
-  { key: 'cas-elementary-functions', name: 'CAS · Elementary functions', bbox: [-7,7,7,-7], source: `// Ordinary text notation is enough; both results can share the graph.
+  { key: 'cas-elementary-functions', name: 'CAS · Elementary functions', bbox: [-7,7,7,-7], source: `// Definitions also work inside later sums and products.
 f = cos(x)
 g = e^x
-f
-g` },
+f + g
+f*g`, previousSourceHash: '30a6a37caec804fbaf70bd2057ab7c140bd5dd313529f5d090abe22ac7843106' },
   { key: 'cas-determinant', name: 'CAS · Matrix determinant', bbox: [-6,6,6,-6], source: `// Matrices render as results but are not mistaken for point sets.
 A = [[1,2],[3,4]]
 determinant(A)` },
