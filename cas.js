@@ -1,6 +1,6 @@
 const CAS_CALLS = new Set([
   'simplify', 'expand', 'differentiate', 'solve', 'plot',
-  'factor', 'together', 'evaluate', 'numeric', 'substitute', 'integrate', 'limit',
+  'factor', 'together', 'evaluate', 'numeric', 'substitute', 'integrate', 'limit', 'sum', 'product',
   'determinant', 'inverse', 'transpose', 'eigenvalues',
   'range', 'map', 'zip', 'assume', 'forget'
 ]);
@@ -236,6 +236,17 @@ function evaluateLine(source, engine, definitions, lineIndex) {
       graph = graphFor(expression, engine, variable);
     }
     latex = expression.latex;
+  } else if (['sum', 'product'].includes(call?.name)) {
+    if (call.args.length !== 4) throw new Error(`${call.name}() needs expression, variable, lower and upper bounds`);
+    const variable = call.args[1].trim();
+    if (!/^[A-Za-z_$][\w$]*$/.test(variable)) throw new Error(`${call.name}() needs a variable name`);
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const lower = resolveExpression(call.args[2], engine, definitions);
+    const upper = resolveExpression(call.args[3], engine, definitions);
+    const operator = call.name === 'sum' ? 'Sum' : 'Product';
+    expression = engine.box([operator, input, ['Tuple', variable, lower, upper]]).evaluate();
+    latex = expression.latex;
+    graph = graphFor(expression, engine);
   } else if (call?.name === 'limit') {
     if (call.args.length !== 3) throw new Error('limit() needs an expression, variable and value');
     const input = resolveExpression(call.args[0], engine, definitions);
