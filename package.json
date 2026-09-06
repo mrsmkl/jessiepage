@@ -1,0 +1,13 @@
+{
+  "name": "jessiepage",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test",
+    "check": "node --check app.js && node --check cas.js && node --check examples.js && node --check scripts/build.mjs && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@cortex-js/compute-engine": "0.119.0"
+  }
+}
