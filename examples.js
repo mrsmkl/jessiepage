@@ -84,6 +84,11 @@ f = cos(x)
 g = e^x
 f + g
 f*g`, previousSourceHash: '30a6a37caec804fbaf70bd2057ab7c140bd5dd313529f5d090abe22ac7843106' },
+  { key: 'cas-latex-input', name: 'CAS · LaTeX input', bbox: [-7,7,7,-7], source: `// Plain text and LaTeX-style expressions can be mixed.
+f = \\frac{x^2}{2}
+g = \\sin(x)
+f + g
+\\cos(x)` },
   { key: 'cas-determinant', name: 'CAS · Matrix determinant', bbox: [-6,6,6,-6], source: `// Matrices render as results but are not mistaken for point sets.
 A = [[1,2],[3,4]]
 determinant(A)` },
