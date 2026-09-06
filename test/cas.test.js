@@ -74,6 +74,20 @@ g = e^x`);
   assert.ok(Math.abs(board.created[1].args[0](1) - Math.E) < 1e-12);
 });
 
+test('defined functions compose through both addition and multiplication', () => {
+  const analysis = successful(`f = cos(x)
+g = e^x
+f + g
+f*g`);
+  const product = resultAt(analysis, 3);
+  const board = new MockBoard();
+
+  assert.equal(product.latex, '\\cos(x)\\mathrm{e}^{x}');
+  drawCasGraphs(board, analysis.results, new Set(['line:3']), compile);
+  assert.equal(board.created.length, 1);
+  assert.ok(Math.abs(board.created[0].args[0](1) - Math.cos(1) * Math.E) < 1e-12);
+});
+
 test('graph expressions compile once instead of substituting on every sample', () => {
   const analysis = successful('f = x^3 + 2*x^2 - x + 4');
   const board = new MockBoard();
