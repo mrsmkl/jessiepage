@@ -182,8 +182,20 @@ function jessieValue(expression, engine) {
 }
 
 function geometryDefinitionFromLine(line, engine, definitions) {
+  const alias = line.trim().match(/^([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\s*;\s*(?:\/\/.*)?$/);
+  if (alias && definitions.has(alias[2])) {
+    const value = definitions.get(alias[2]);
+    const json = value.json;
+    const isGeometry = (Array.isArray(json) && ['Tuple', 'Pair'].includes(json[0]) && json.length === 3)
+      || ['Equal', 'NotEqual', 'Less', 'LessEqual', 'Greater', 'GreaterEqual'].includes(value.operator);
+    if (isGeometry) {
+      definitions.set(alias[1], value);
+      engine.assign(alias[1], value);
+      return true;
+    }
+  }
   const match = line.trim().match(/^([A-Za-z_$][\w$]*)\s*=\s*(point|line|segment|circle|functiongraph)\s*\(([\s\S]*?)\)\s*(?:<<[\s\S]*>>)?\s*;?\s*(?:\/\/.*)?$/i);
-  if (!match) return;
+  if (!match) return false;
   const [, name, rawKind, rawArguments] = match;
   const kind = rawKind.toLowerCase();
   const args = splitArguments(rawArguments);
@@ -227,9 +239,10 @@ function geometryDefinitionFromLine(line, engine, definitions) {
     if (quoted) expression = engine.box(['Equal', 'y', resolveExpression(quoted[2], engine, definitions)]).evaluate();
   }
 
-  if (!expression) return;
+  if (!expression) return false;
   definitions.set(name, expression);
   engine.assign(name, expression);
+  return true;
 }
 
 function graphFor(expression, engine, preferredVariable = '') {
@@ -494,10 +507,11 @@ export function analyzeSource(source, ComputeEngine) {
     const opens = (visible.match(/\{/g) || []).length;
     const closes = (visible.match(/\}/g) || []).length;
     structure.depth = Math.max(0, structure.depth + opens - closes);
-    const casSource = topLevel && visible.trim() ? casSourceFromLine(line) : null;
+    let geometryLine = false;
+    try { if (topLevel) geometryLine = geometryDefinitionFromLine(line, engine, definitions); }
+    catch { /* Dynamic Jessie constructions do not need a CAS representation. */ }
+    const casSource = topLevel && visible.trim() && !geometryLine ? casSourceFromLine(line) : null;
     if (casSource === null) {
-      try { if (topLevel) geometryDefinitionFromLine(line, engine, definitions); }
-      catch { /* Dynamic Jessie constructions do not need a CAS representation. */ }
       return;
     }
     jessieLines[lineIndex] = '';

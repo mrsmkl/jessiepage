@@ -382,6 +382,17 @@ solve(carrier, y)`);
   assert.equal(resultAt(analysis, 6).latex, '\\left\\{\\frac{x}{2}+1\\right\\}');
 });
 
+test('geometry aliases stay as Jessie objects while remaining available to CAS', () => {
+  const analysis = successful(`A = point(-2, 0);
+U=A;
+B = point(2, 2);
+carrier = line(U, B);
+solve(carrier, y)`);
+
+  assert.match(analysis.jessieSource, /U=A;/);
+  assert.equal(resultAt(analysis, 4).latex, '\\left\\{\\frac{x}{2}+1\\right\\}');
+});
+
 test('shifted-domain functions and individual tuples are graphable', () => {
   const analysis = successful(`sqrt(x-4)
 (2,3)
