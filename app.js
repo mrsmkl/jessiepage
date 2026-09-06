@@ -80,7 +80,7 @@ const canvasFullscreen = document.getElementById('canvas-fullscreen');
 const STORAGE_KEY = 'jessiepage-state-v1';
 const DEFAULT_BBOX = [-6, 6, 6, -6];
 const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
-const BUILTIN_EXAMPLES_VERSION = 12;
+const BUILTIN_EXAMPLES_VERSION = 13;
 const INPUT_RENDER_MS = 80;
 const SAVE_IDLE_MS = 250;
 const ERROR_IDLE_MS = 700;
@@ -110,6 +110,15 @@ const AUTOCOMPLETE_WORDS = [
   ['substitute', 'substitute(', 'CAS'],
   ['integrate', 'integrate(', 'CAS'],
   ['limit', 'limit(', 'CAS'],
+  ['determinant', 'determinant(', 'CAS'],
+  ['inverse', 'inverse(', 'CAS'],
+  ['transpose', 'transpose(', 'CAS'],
+  ['eigenvalues', 'eigenvalues(', 'CAS'],
+  ['range', 'range(', 'CAS'],
+  ['map', 'map(', 'CAS'],
+  ['zip', 'zip(', 'CAS'],
+  ['assume', 'assume(', 'CAS'],
+  ['forget', 'forget(', 'CAS'],
   ['plot', 'plot(', 'CAS'],
   ['map', 'map (x) -> ', 'language'],
   ['sin', 'sin(', 'math'],
