@@ -102,6 +102,41 @@ f + g
   assert.ok(resultAt(analysis, 3).graph);
 });
 
+test('finite sum and product wrappers reuse definitions and remain graphable', () => {
+  const analysis = successful(`sumTerm = x^k
+sumResult = sum(sumTerm, k, 1, 4)
+productTerm = x+k
+productResult = product(productTerm, k, 1, 3)
+sum(k^2, k, 1, 10)
+product(k, k, 1, 6)`);
+  const board = new MockBoard();
+
+  assert.equal(resultAt(analysis, 1).latex, 'x^4+x^3+x^2+x');
+  assert.equal(resultAt(analysis, 4).latex, '385');
+  assert.equal(resultAt(analysis, 5).latex, '720');
+  assert.ok(resultAt(analysis, 1).graph);
+  assert.ok(resultAt(analysis, 3).graph);
+  drawCasGraphs(board, analysis.results, new Set(['name:sumResult', 'name:productResult']), compile);
+  assert.equal(board.created[0].args[0](2), 30);
+  assert.equal(board.created[1].args[0](2), 60);
+});
+
+test('LaTeX sigma and product notation evaluate directly', () => {
+  const analysis = successful(String.raw`\sum_{k=1}^{10} k
+\prod_{k=1}^{6} k`);
+
+  assert.equal(resultAt(analysis, 0).latex, '55');
+  assert.equal(resultAt(analysis, 1).latex, '720');
+});
+
+test('finite sum and product wrappers validate their arguments', () => {
+  const analysis = analyze(`sum(k, k, 1)
+product(k, k + 1, 1, 4)`);
+
+  assert.match(resultAt(analysis, 0).error, /lower and upper bounds/);
+  assert.match(resultAt(analysis, 1).error, /variable name/);
+});
+
 test('graph expressions compile once instead of substituting on every sample', () => {
   const analysis = successful('f = x^3 + 2*x^2 - x + 4');
   const board = new MockBoard();
@@ -210,7 +245,7 @@ a = 5`);
 
 test('every built-in CAS page evaluates without a CAS error', () => {
   const examples = BUILTIN_EXAMPLES.filter((example) => example.key.startsWith('cas-'));
-  assert.equal(examples.length, 22);
+  assert.equal(examples.length, 24);
 
   for (const example of examples) {
     const errors = analyze(example.source).results.filter((result) => result.error);
