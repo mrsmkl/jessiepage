@@ -51,7 +51,7 @@ function isCasLine(line) {
   const body = assignment?.[2]?.trim() || source;
   if (callFromLine(body)) return true;
   if (JESSIE_CALL.test(source) || /['"]/.test(source)) return false;
-  return Boolean(assignment || /^[\dA-Za-z_+\-*/^().,=\[\]\s]+$/.test(source));
+  return Boolean(assignment || /^[\dA-Za-z_+\-*/^().,=<>\\{}\[\]|\s]+$/.test(source));
 }
 
 function hasMathError(json) {
