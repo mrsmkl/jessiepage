@@ -99,6 +99,17 @@ term = x+k
 p = product(term, k, 1, 3)
 product(k, k, 1, 6)
 \\prod_{k=1}^{6} k` },
+  { key: 'cas-shared-variables', name: 'CAS + Jessie · Shared values', bbox: [-7,7,7,-7], source: `// Constant values are defined in both CortexJS and JessieCode.
+scale = 2
+offset = 1;
+height = scale + offset
+A = point(-scale, offset);
+B = point(scale, height);
+carrier = line(A, B);
+solve(carrier, y)
+c = circle(A, scale);
+solve(c, y)
+f = x^2 + height` },
   { key: 'cas-determinant', name: 'CAS · Matrix determinant', bbox: [-6,6,6,-6], source: `// Matrices render as results but are not mistaken for point sets.
 A = [[1,2],[3,4]]
 determinant(A)` },
