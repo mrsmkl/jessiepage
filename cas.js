@@ -1,6 +1,8 @@
 const CAS_CALLS = new Set([
   'simplify', 'expand', 'differentiate', 'solve', 'plot',
-  'factor', 'together', 'evaluate', 'numeric', 'substitute', 'integrate', 'limit'
+  'factor', 'together', 'evaluate', 'numeric', 'substitute', 'integrate', 'limit',
+  'determinant', 'inverse', 'transpose', 'eigenvalues',
+  'range', 'map', 'zip', 'assume', 'forget'
 ]);
 const JESSIE_CALL = /\b(?:point|line|segment|circle|polygon|midpoint|intersection|perpendicular|circumcircle|glider|tangent|slider|functiongraph|curve|text|angle|map|V)\s*\(/;
 
@@ -34,9 +36,11 @@ function isCasLine(line) {
   const source = line.trim();
   if (!source || source.startsWith('//')) return false;
   if (/^(?:\$board|for|if|while)\b/.test(source) || /;|<<|\.glide\s*\(/.test(source)) return false;
-  if (JESSIE_CALL.test(source) || /['"]/.test(source)) return false;
   const assignment = source.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)(.+)$/);
-  return Boolean(assignment || callFromLine(source) || /^[\dA-Za-z_+\-*/^().,=\[\]\s]+$/.test(source));
+  const body = assignment?.[2]?.trim() || source;
+  if (callFromLine(body)) return true;
+  if (JESSIE_CALL.test(source) || /['"]/.test(source)) return false;
+  return Boolean(assignment || /^[\dA-Za-z_+\-*/^().,=\[\]\s]+$/.test(source));
 }
 
 function hasMathError(json) {
@@ -50,6 +54,30 @@ function numberValue(expression) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+function complexValue(expression, engine) {
+  const json = expression.N().json;
+  if (!Array.isArray(json) || json[0] !== 'Complex' || json.length !== 3) return null;
+  const real = numberValue(engine.box(json[1]));
+  const imaginary = numberValue(engine.box(json[2]));
+  return real === null || imaginary === null ? null : [real, imaginary];
+}
+
+function collectionItems(expression, engine) {
+  const json = expression.json;
+  if (!Array.isArray(json) || !['List', 'Set', 'Tuple'].includes(json[0])) return null;
+  return json.slice(1).map((item) => engine.box(item));
+}
+
+function matrixLatex(expression, engine) {
+  const json = expression.json;
+  if (!Array.isArray(json) || json[0] !== 'List' || json.length < 2) return '';
+  const rows = json.slice(1);
+  if (!rows.every((row) => Array.isArray(row) && row[0] === 'List')) return '';
+  const width = rows[0].length;
+  if (width < 2 || !rows.every((row) => row.length === width)) return '';
+  return `\\begin{bmatrix}${rows.map((row) => row.slice(1).map((item) => engine.box(item).latex).join('&')).join('\\\\')}\\end{bmatrix}`;
+}
+
 function pointValues(expression, engine) {
   const json = expression.json;
   if (!Array.isArray(json)) return [];
@@ -57,19 +85,19 @@ function pointValues(expression, engine) {
   const collection = ['List', 'Set', 'Tuple'].includes(operator) ? items : [];
   if (!collection.length) return [];
 
+  if (operator === 'List' && collection.every((item) => Array.isArray(item) && item[0] === 'List')) return [];
   const pairs = collection.map((item) => {
     if (!Array.isArray(item) || !['List', 'Tuple', 'Pair'].includes(item[0]) || item.length !== 3) return null;
     const x = numberValue(engine.box(item[1]));
     const y = numberValue(engine.box(item[2]));
     return x === null || y === null ? null : [x, y];
   });
-  if (pairs.every(Boolean)) return pairs;
-
-  const values = collection.map((item) => numberValue(engine.box(item)));
-  return values.every((value) => value !== null) ? values.map((value) => [value, 0]) : [];
+  return pairs.every(Boolean) ? pairs : [];
 }
 
 function graphFor(expression, engine, preferredVariable = '') {
+  const complex = complexValue(expression, engine);
+  if (complex && complex[1] !== 0) return { kind: 'points', coordinates: [complex] };
   const coordinates = pointValues(expression, engine);
   if (coordinates.length) return { kind: 'points', coordinates };
   if (['Equal', 'NotEqual', 'Less', 'LessEqual', 'Greater', 'GreaterEqual'].includes(expression.operator)) return null;
@@ -98,7 +126,67 @@ function evaluateLine(source, engine, definitions, lineIndex) {
   let graph = null;
   let forceGraph = false;
 
-  if (call?.name === 'solve') {
+  if (call?.name === 'assume') {
+    if (call.args.length !== 1) throw new Error('assume() needs one condition');
+    const condition = resolveExpression(call.args[0], engine, definitions);
+    const status = engine.assume(condition);
+    if (status === 'contradiction') throw new Error('This contradicts an earlier assumption');
+    if (status === 'not-a-predicate') throw new Error('assume() needs a condition such as x > 0');
+    expression = engine.box(true);
+    latex = status === 'tautology' ? '\\text{already assumed}' : '\\text{assumed}';
+  } else if (call?.name === 'forget') {
+    if (call.args.length !== 1 || !/^[A-Za-z_$][\w$]*$/.test(call.args[0].trim())) {
+      throw new Error('forget() needs one variable name');
+    }
+    const variable = call.args[0].trim();
+    engine.forget(variable);
+    definitions.delete(variable);
+    expression = engine.box(true);
+    latex = `\\text{forgot }${variable}`;
+  } else if (call?.name === 'range') {
+    if (call.args.length < 2 || call.args.length > 3) throw new Error('range() needs start, end and optional step');
+    const start = numberValue(resolveExpression(call.args[0], engine, definitions));
+    const end = numberValue(resolveExpression(call.args[1], engine, definitions));
+    const step = call.args[2] ? numberValue(resolveExpression(call.args[2], engine, definitions)) : 1;
+    if (start === null || end === null || step === null || step === 0) throw new Error('range() needs finite numbers and a nonzero step');
+    const values = [];
+    const movingForward = step > 0;
+    for (let index = 0; index <= 1000; index += 1) {
+      const value = start + index * step;
+      if ((movingForward && value > end + Math.abs(step) * 1e-12) || (!movingForward && value < end - Math.abs(step) * 1e-12)) break;
+      values.push(engine.box(value));
+    }
+    if (values.length > 1000) throw new Error('range() is limited to 1000 values');
+    expression = engine.box(['List', ...values]);
+    latex = expression.latex;
+  } else if (call?.name === 'map') {
+    if (![2, 3].includes(call.args.length)) throw new Error('map() needs expression, optional variable, and values');
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const variable = call.args.length === 3 ? call.args[1].trim() : Array.from(input.unknowns || input.freeVariables || [])[0];
+    if (!variable) throw new Error('map() could not determine the expression variable');
+    const values = collectionItems(resolveExpression(call.args.at(-1), engine, definitions), engine);
+    if (!values) throw new Error('map() needs a list, set or tuple of values');
+    expression = engine.box(['List', ...values.map((value) => input.subs({ [variable]: value }).evaluate())]);
+    latex = expression.latex;
+  } else if (call?.name === 'zip') {
+    if (call.args.length !== 2) throw new Error('zip() needs two collections');
+    const xs = collectionItems(resolveExpression(call.args[0], engine, definitions), engine);
+    const ys = collectionItems(resolveExpression(call.args[1], engine, definitions), engine);
+    if (!xs || !ys) throw new Error('zip() needs two lists, sets or tuples');
+    if (xs.length !== ys.length) throw new Error('zip() collections must have the same length');
+    expression = engine.box(['List', ...xs.map((x, index) => ['Tuple', x, ys[index]])]);
+    latex = expression.latex;
+    const coordinates = xs.map((x, index) => [numberValue(x), numberValue(ys[index])]);
+    if (coordinates.every(([x, y]) => x !== null && y !== null)) graph = { kind: 'points', coordinates };
+  } else if (['determinant', 'inverse', 'transpose', 'eigenvalues'].includes(call?.name)) {
+    if (call.args.length !== 1) throw new Error(`${call.name}() needs one matrix`);
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const operator = {
+      determinant: 'Determinant', inverse: 'Inverse', transpose: 'Transpose', eigenvalues: 'Eigenvalues'
+    }[call.name];
+    expression = engine.box([operator, input]).evaluate();
+    latex = expression.latex;
+  } else if (call?.name === 'solve') {
     if (!call.args[0]) throw new Error('solve() needs an expression');
     const variable = call.args[1]?.trim() || 'x';
     const input = resolveExpression(call.args[0], engine, definitions);
@@ -174,6 +262,7 @@ function evaluateLine(source, engine, definitions, lineIndex) {
     graph = graphFor(expression, engine, preferredVariable);
   }
 
+  latex = matrixLatex(expression, engine) || latex;
   if (name) {
     definitions.set(name, expression);
     engine.assign(name, expression);
