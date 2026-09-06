@@ -1,4 +1,7 @@
-const CAS_CALLS = new Set(['simplify', 'expand', 'differentiate', 'solve', 'plot']);
+const CAS_CALLS = new Set([
+  'simplify', 'expand', 'differentiate', 'solve', 'plot',
+  'factor', 'together', 'evaluate', 'numeric', 'substitute', 'integrate', 'limit'
+]);
 const JESSIE_CALL = /\b(?:point|line|segment|circle|polygon|midpoint|intersection|perpendicular|circumcircle|glider|tangent|slider|functiongraph|curve|text|angle|map|V)\s*\(/;
 
 function splitArguments(source) {
@@ -111,15 +114,64 @@ function evaluateLine(source, engine, definitions, lineIndex) {
     if (coordinates.length && coordinates.every((value) => value !== null)) {
       graph = { kind: 'points', coordinates: coordinates.map((value) => [value, 0]) };
     }
+  } else if (call?.name === 'substitute') {
+    if (call.args.length !== 3) throw new Error('substitute() needs an expression, variable and value');
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const variable = call.args[1].trim();
+    const replacement = resolveExpression(call.args[2], engine, definitions);
+    expression = input.subs({ [variable]: replacement }).evaluate();
+    latex = expression.latex;
+    const x = numberValue(replacement);
+    const y = numberValue(expression);
+    graph = x === null || y === null ? graphFor(expression, engine) : { kind: 'points', coordinates: [[x, y]] };
+  } else if (call?.name === 'integrate') {
+    if (![2, 4].includes(call.args.length)) throw new Error('integrate() needs expression, variable, and optional lower and upper bounds');
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const variable = call.args[1].trim();
+    if (call.args.length >= 4) {
+      const lower = resolveExpression(call.args[2], engine, definitions);
+      const upper = resolveExpression(call.args[3], engine, definitions);
+      expression = engine.box(['Integrate', input, ['Tuple', variable, lower, upper]]).evaluate();
+    } else {
+      expression = engine.box(['Integrate', input, variable]).evaluate();
+      graph = graphFor(expression, engine, variable);
+    }
+    latex = expression.latex;
+  } else if (call?.name === 'limit') {
+    if (call.args.length !== 3) throw new Error('limit() needs an expression, variable and value');
+    const input = resolveExpression(call.args[0], engine, definitions);
+    const variable = call.args[1].trim();
+    const at = resolveExpression(call.args[2], engine, definitions);
+    expression = engine.box(['Limit', input, variable, at]).evaluate();
+    latex = expression.latex;
+    const x = numberValue(at);
+    const y = numberValue(expression);
+    if (x !== null && y !== null) graph = { kind: 'points', coordinates: [[x, y]], open: true };
   } else {
     const input = call ? resolveExpression(call.args[0] || '', engine, definitions) : resolveExpression(body, engine, definitions);
     if (call?.name === 'simplify') expression = input.simplify();
     else if (call?.name === 'expand') expression = engine.box(['Expand', input]).evaluate();
     else if (call?.name === 'differentiate') expression = engine.box(['D', input, call.args[1]?.trim() || 'x']).evaluate();
+    else if (call?.name === 'factor') expression = engine.box(['Factor', input, ...(call.args[1] ? [call.args[1].trim()] : [])]).evaluate();
+    else if (call?.name === 'together') expression = engine.box(['Together', input]).evaluate();
+    else if (call?.name === 'evaluate') expression = input.evaluate();
+    else if (call?.name === 'numeric') {
+      const oldPrecision = engine.precision;
+      const requestedPrecision = Number(call.args[1]);
+      if (call.args[1] && (!Number.isInteger(requestedPrecision) || requestedPrecision < 2 || requestedPrecision > 1000)) {
+        throw new Error('numeric() precision must be an integer from 2 to 1000');
+      }
+      try {
+        if (call.args[1]) engine.precision = requestedPrecision;
+        expression = input.N();
+        latex = expression.latex;
+      } finally { engine.precision = oldPrecision; }
+    }
     else expression = input;
     forceGraph = call?.name === 'plot';
-    latex = expression.latex;
-    graph = graphFor(expression, engine, call?.name === 'differentiate' ? call.args[1]?.trim() : '');
+    if (!latex) latex = expression.latex;
+    const preferredVariable = ['differentiate', 'factor'].includes(call?.name) ? call.args[1]?.trim() : '';
+    graph = graphFor(expression, engine, preferredVariable);
   }
 
   if (name) {
@@ -164,7 +216,8 @@ export function drawCasGraphs(board, results, enabledKeys) {
         name: result.graph.coordinates.length > 1 ? `${index + 1}` : '',
         size: 3,
         strokeColor: color,
-        fillColor: color
+        fillColor: result.graph.open ? '#fff' : color,
+        fixed: true
       }));
       return;
     }

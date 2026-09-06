@@ -48,7 +48,32 @@ f = x^2 - 4
 solve(f, x)`, previousSourceHashes: ['550770f454f89141d5c196ad112534ace0cfa0f7eb55a32c74c1848324a02c4e', 'fafe34c1409b378eea49d313bd16ec0b28def2e27bb754988d9f8532b912c0f3', 'e7fb538bdff08b6985328e0602a98c4b85a53153ee9da0b3c632f2fb9ccc9e1b'] },
   { key: 'cas-points', name: 'CAS · Point set', bbox: [-6,6,6,-6], source: `// A set of coordinate pairs is graphed together.
 samples = {(-3,2),(-1,-2),(1,3),(3,1)}
-samples` }
+samples` },
+  { key: 'cas-factor', name: 'CAS · Factor', bbox: [-5,8,5,-8], source: `// Factor a polynomial without redefining it.
+f = x^3 - 6*x^2 + 11*x - 6
+factor(f, x)` },
+  { key: 'cas-together', name: 'CAS · Together', bbox: [-6,8,6,-8], source: `// Combine a sum of rational expressions.
+f = 1/x + 1/(x+1)
+together(f)` },
+  { key: 'cas-evaluate', name: 'CAS · Evaluate exactly', bbox: [-6,6,6,-6], source: `// Exact arithmetic stays exact where possible.
+a = 2^{10} - 1
+evaluate(a)
+evaluate(1/3 + 1/6)` },
+  { key: 'cas-numeric', name: 'CAS · Numeric approximation', bbox: [-6,6,6,-6], source: `// The optional second argument controls precision.
+r = 2^{1/2}
+numeric(r)
+numeric(r, 30)` },
+  { key: 'cas-substitute', name: 'CAS · Substitute', bbox: [-6,8,6,-8], source: `// The result can be graphed as a point on f.
+f = x^2 - 4
+substitute(f, x, 3)
+substitute(f, x, -2)` },
+  { key: 'cas-integrate', name: 'CAS · Integrate', bbox: [-5,8,5,-8], source: `// Indefinite results are graphable; definite results are scalars.
+f = x^2
+integrate(f, x)
+integrate(f, x, 0, 2)` },
+  { key: 'cas-limit', name: 'CAS · Limit', bbox: [-6,6,6,-6], source: `// The removable hole has the limiting value 2.
+f = (x^2 - 1)/(x - 1)
+limit(f, x, 1)` }
 ];
 
 // Standalone JessieCode diagrams, installed once as editable local pages.
