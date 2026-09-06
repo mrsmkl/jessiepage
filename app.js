@@ -80,7 +80,7 @@ const canvasFullscreen = document.getElementById('canvas-fullscreen');
 const STORAGE_KEY = 'jessiepage-state-v1';
 const DEFAULT_BBOX = [-6, 6, 6, -6];
 const NUMBER = String.raw`[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?`;
-const BUILTIN_EXAMPLES_VERSION = 14;
+const BUILTIN_EXAMPLES_VERSION = 15;
 const INPUT_RENDER_MS = 80;
 const SAVE_IDLE_MS = 250;
 const ERROR_IDLE_MS = 700;
@@ -135,6 +135,8 @@ let state = { pages: [], currentPageId: null };
 let autocompleteItems = [];
 let autocompleteIndex = 0;
 let autocompleteToken = null;
+let lastCasAnalysis = null;
+const textMeasureCanvas = document.createElement('canvas');
 
 const boardOptions = {
   boundingbox: DEFAULT_BBOX,
@@ -257,7 +259,38 @@ function syncCasResultsScroll() {
   casResults.scrollTop = editor.scrollTop;
 }
 
+function expandedTabs(source, size = 2) {
+  let column = 0;
+  let result = '';
+  for (const character of source) {
+    if (character !== '\t') { result += character; column += 1; continue; }
+    const spaces = size - (column % size);
+    result += ' '.repeat(spaces);
+    column += spaces;
+  }
+  return result;
+}
+
+function positionCasConnectors(analysis = lastCasAnalysis) {
+  if (!analysis) return;
+  const context = textMeasureCanvas.getContext('2d');
+  if (!context) return;
+  const style = getComputedStyle(editor);
+  context.font = `${style.fontSize} ${style.fontFamily}`;
+  const editorLeft = editor.getBoundingClientRect().left;
+  const textLeft = editorLeft + (Number.parseFloat(style.paddingLeft) || 0) - editor.scrollLeft;
+  Array.from(casResultLines.children).forEach((row, lineIndex) => {
+    const bubble = row.querySelector('.cas-result-bubble');
+    if (!bubble) return;
+    const textWidth = context.measureText(expandedTabs(analysis.lines[lineIndex] || '')).width;
+    const gap = 6;
+    const width = Math.max(0, bubble.getBoundingClientRect().left - textLeft - textWidth - gap);
+    bubble.style.setProperty('--connector-width', `${width}px`);
+  });
+}
+
 function renderCasResults(analysis) {
+  lastCasAnalysis = analysis;
   const style = getComputedStyle(editor);
   const lineHeight = Number.parseFloat(style.lineHeight) || 22;
   const paddingTop = Number.parseFloat(style.paddingTop) || 0;
@@ -315,6 +348,7 @@ function renderCasResults(analysis) {
     casResultLines.appendChild(row);
   });
   syncCasResultsScroll();
+  positionCasConnectors(analysis);
 }
 
 function validate(code) {
@@ -491,13 +525,8 @@ function processEditorInput(event) {
   rememberSource(editor.value);
   if (event?.inputType === 'insertFromPaste') hideAutocomplete();
   else updateAutocomplete();
-  if (autocompleteActive()) {
-    clearError();
-    setStatus('pending', 'completing…');
-    return;
-  }
   clearError();
-  setStatus('pending', 'checking…');
+  setStatus('pending', autocompleteActive() ? 'completing…' : 'checking…');
   renderTimer = setTimeout(() => {
     if (render(editor.value, currentPage()?.bbox, false)) return;
     deferError();
@@ -661,6 +690,7 @@ function setSplitFromPointer(event) {
     localStorage.setItem('jessiepage-editor-width', String(width));
   }
   if (board) board.updateContainerDims();
+  positionCasConnectors();
 }
 
 async function toggleFullscreen(target) {
@@ -743,7 +773,8 @@ document.addEventListener('fullscreenchange', updateFullscreenButtons);
 document.addEventListener('webkitfullscreenchange', updateFullscreenButtons);
 
 editor.addEventListener('input', processEditorInput);
-editor.addEventListener('scroll', () => { positionErrorMarker(); syncCasResultsScroll(); });
+editor.addEventListener('scroll', () => { positionErrorMarker(); syncCasResultsScroll(); positionCasConnectors(); });
+window.addEventListener('resize', () => positionCasConnectors());
 editor.addEventListener('click', () => updateAutocomplete());
 editor.addEventListener('blur', () => setTimeout(() => {
   hideAutocomplete();
