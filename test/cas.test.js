@@ -62,6 +62,18 @@ differentiate(f, x)`);
   assert.equal(board.created[0].attributes.strokeWidth, 3);
 });
 
+test('plain-text cosine and exponential expressions render and graph correctly', () => {
+  const analysis = successful(`f = cos(x)
+g = e^x`);
+  const board = new MockBoard();
+
+  assert.equal(resultAt(analysis, 0).latex, '\\cos(x)');
+  assert.equal(resultAt(analysis, 1).latex, '\\mathrm{e}^{x}');
+  drawCasGraphs(board, analysis.results, new Set(['name:f', 'name:g']));
+  assert.equal(board.created[0].args[0](0), 1);
+  assert.ok(Math.abs(board.created[1].args[0](1) - Math.E) < 1e-12);
+});
+
 test('several selected functions and point sets share one board', () => {
   const analysis = successful(`f = x^2
 samples = {(-2,4),(0,0),(2,4)}
@@ -155,7 +167,7 @@ a = 5`);
 
 test('every built-in CAS page evaluates without a CAS error', () => {
   const examples = BUILTIN_EXAMPLES.filter((example) => example.key.startsWith('cas-'));
-  assert.equal(examples.length, 20);
+  assert.equal(examples.length, 21);
 
   for (const example of examples) {
     const errors = analyze(example.source).results.filter((result) => result.error);
