@@ -49,7 +49,9 @@ function casSourceFromLine(line) {
   if (/^[{}]$/.test(source)) return null;
   if (/^(?:\$board|for|if|while)\b/.test(source) || /<<|\.glide\s*\(/.test(source)) return null;
   const terminatedAssignment = source.match(/^([A-Za-z_$][\w$]*)\s*=\s*(?!=)([^;]+?)\s*;\s*(?:\/\/.*)?$/);
-  if (terminatedAssignment && !JESSIE_CALL.test(source) && !/['"]/.test(source)) {
+  const terminatedBody = terminatedAssignment?.[2] || '';
+  if (terminatedAssignment && /[\d+\-*/^()]/.test(terminatedBody) && !/[\[\]{}]/.test(terminatedBody)
+      && !JESSIE_CALL.test(source) && !/['"]/.test(source)) {
     return `${terminatedAssignment[1]} = ${terminatedAssignment[2].trim()}`;
   }
   if (/;/.test(source)) return null;
